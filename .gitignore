@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Turbo
+.turbo/
+
+# Build outputs
+dist/
+build/
+
+# Env files - never commit real secrets
+.env
+.env.local
+.env*.local
+!.env.example
+
+# Never commit a service account key. The private key lives in .env.local as a
+# single-line value; there is no JSON key file anywhere in this repo by design.
+*-sa.json
+*.json.key
+serviceAccount*.json
+
+# Demo recordings and stage screenshots that are not part of the docs set
+/recordings/
+
+# Editor / OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Test / coverage
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Local design reference images, not part of the shipped product
+/ui inspo/

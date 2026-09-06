@@ -1,0 +1,96 @@
+/* Pukaar design tokens, v2.
+   Light, luminous, iridescent. The brand hues (plum, gold, magenta) survive
+   as chromatic DNA, rebuilt at high lightness with real chroma so the field
+   spans three hue families instead of collapsing into the cream/sand default
+   every generated interface reaches for. OKLCH throughout: perceptually
+   uniform, so lightness and chroma steps actually mean what they say. */
+
+:root {
+  /* Ground: a pale lilac-blush, not a warm neutral. */
+  --ground: oklch(0.975 0.018 320);
+  --ground-2: oklch(0.955 0.028 340);
+
+  /* Aurora: three hue families at real chroma, the field the orb sits in. */
+  --aurora-rose: oklch(0.9 0.085 350);
+  --aurora-gold: oklch(0.93 0.07 85);
+  --aurora-lilac: oklch(0.88 0.075 310);
+
+  /* Text. */
+  --ink: oklch(0.22 0.03 320);
+  --ink-soft: oklch(0.46 0.03 320);
+  --ink-faint: oklch(0.62 0.025 320);
+
+  /* Brand, saturated tier: chips, active states, the orb's colour ramp. */
+  --plum: oklch(0.34 0.115 335);
+  --plum-deep: oklch(0.24 0.09 335);
+  --gold: oklch(0.79 0.135 82);
+  --magenta: oklch(0.63 0.24 348);
+
+  /* Surfaces on the light ground. */
+  --surface: oklch(0.99 0.008 320 / 0.72);
+  --surface-strong: oklch(0.99 0.006 320 / 0.92);
+  --border: oklch(0.22 0.03 320 / 0.1);
+  --border-strong: oklch(0.22 0.03 320 / 0.18);
+
+  /* Cover mode: a separate, dark, deliberately boring ground. */
+  --cover: oklch(0.19 0.055 330);
+  --cover-ink: oklch(0.93 0.01 330);
+  --cover-ink-soft: oklch(0.65 0.02 330);
+
+  /* Semantic. */
+  --danger: var(--magenta);
+  --success: oklch(0.62 0.15 150);
+
+  /* Motion tokens. */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --dur-fast: 150ms;
+  --dur-base: 260ms;
+  --dur-slow: 420ms;
+
+  /* z-index scale. Never an arbitrary value outside this list. */
+  --z-rail: 10;
+  --z-dock: 20;
+  --z-status: 20;
+  --z-cover: 60;
+  --z-backdrop: 70;
+  --z-modal: 80;
+  --z-toast: 90;
+  --z-tooltip: 100;
+}
+
+@theme inline {
+  --color-ground: var(--ground);
+  --color-ground-2: var(--ground-2);
+  --color-aurora-rose: var(--aurora-rose);
+  --color-aurora-gold: var(--aurora-gold);
+  --color-aurora-lilac: var(--aurora-lilac);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-plum: var(--plum);
+  --color-plum-deep: var(--plum-deep);
+  --color-gold: var(--gold);
+  --color-magenta: var(--magenta);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-border: var(--border);
+  --color-cover: var(--cover);
+  --color-cover-ink: var(--cover-ink);
+  --color-cover-ink-soft: var(--cover-ink-soft);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --font-display: var(--font-geist-sans);
+  --font-body: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

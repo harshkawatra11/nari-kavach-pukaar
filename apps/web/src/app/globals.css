@@ -1,0 +1,41 @@
+@import "tailwindcss";
+@import "@pukaar/ui/src/tokens.css";
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: var(--magenta);
+  color: var(--ground);
+}
+
+/* Cover mode owns its own colour scheme; nothing above this line applies
+   inside it, which is deliberate: cover mode must not accidentally inherit
+   an aurora token and betray the console underneath. */
+.cover-mode {
+  background: var(--cover);
+  color: var(--cover-ink);
+}
