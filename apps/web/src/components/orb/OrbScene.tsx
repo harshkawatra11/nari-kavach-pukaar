@@ -42,6 +42,8 @@ export function OrbScene({
       <ambientLight intensity={0.6} />
       <directionalLight position={[3, 4, 2]} intensity={0.9} />
       <directionalLight position={[-3, -1, 2]} intensity={0.4} color="#7C4FE0" />
+      <pointLight position={[-2.2, 1.4, 2.6]} intensity={7} distance={7} color="#ff4fca" />
+      <pointLight position={[2.1, -1.5, 2.2]} intensity={5} distance={7} color="#53dcff" />
       <Orb reducedMotion={reducedMotion} scale={orbScale} pointer={pointer} />
       {!reducedMotion && (
         <>

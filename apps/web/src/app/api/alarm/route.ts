@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
   // The relay path authenticates with a shared secret; the browser's local
   // trigger path is same-origin and does not carry it. Both are legitimate.
-  if (body.path === "server-tool" && relaySecretHeader && relaySecretHeader !== env.RELAY_SHARED_SECRET) {
+  if (body.path === "server-tool" && relaySecretHeader !== env.RELAY_SHARED_SECRET) {
     return Response.json({ ok: false, error: "invalid relay secret" }, { status: 401 });
   }
 

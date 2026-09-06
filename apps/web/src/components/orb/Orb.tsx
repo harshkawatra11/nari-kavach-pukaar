@@ -79,12 +79,16 @@ export function Orb({
     // of it.
     const scale = (1 + amp * 0.16) * baseScale;
     groupRef.current.scale.setScalar(scale);
-    groupRef.current.rotation.y += delta * 0.09;
+    // Keep the internal light rings mostly facing the viewer. Unbounded spin
+    // turned them edge-on for long stretches, making the orb look like a
+    // flat coin inside a bubble. A slow limited yaw preserves parallax while
+    // retaining the circular voice-assistant silhouette.
+    groupRef.current.rotation.y = Math.sin(clock.current * 0.24) * 0.12;
 
     const pinkMat = pinkGlowRef.current?.material as THREE.MeshBasicMaterial | undefined;
     const cyanMat = cyanGlowRef.current?.material as THREE.MeshBasicMaterial | undefined;
-    if (pinkMat) pinkMat.opacity = 0.18 + amp * 0.22;
-    if (cyanMat) cyanMat.opacity = 0.12 + amp * 0.18;
+    if (pinkMat) pinkMat.opacity = 0.48 + amp * 0.24;
+    if (cyanMat) cyanMat.opacity = 0.36 + amp * 0.2;
 
     if (orbAudio.lastAlarmAt !== lastAlarmSeen.current) {
       lastAlarmSeen.current = orbAudio.lastAlarmAt;
@@ -93,7 +97,7 @@ export function Orb({
         { x: scale * 1.35, y: scale * 1.35, z: scale * 1.35 },
         { x: scale, y: scale, z: scale, duration: 0.7, ease: "elastic.out(1, 0.55)" },
       );
-      if (pinkMat) gsap.fromTo(pinkMat, { opacity: 0.9 }, { opacity: 0.18 + amp * 0.22, duration: 0.7, ease: "power2.out" });
+      if (pinkMat) gsap.fromTo(pinkMat, { opacity: 0.95 }, { opacity: 0.48 + amp * 0.24, duration: 0.7, ease: "power2.out" });
     }
   });
 
@@ -120,16 +124,16 @@ export function Orb({
 
       {/* Internal volume, pink lead (upper). Additive + depthWrite false so
           it reads as coloured light inside the glass, not a solid fill. */}
-      <mesh ref={pinkGlowRef} position={[0, 0.4, 0]} renderOrder={0}>
-        <sphereGeometry args={[1.15, 48, 48]} />
-        <meshBasicMaterial color={ORB_PALETTE.pink} transparent opacity={0.18} blending={THREE.AdditiveBlending} depthWrite={false} />
+      <mesh ref={pinkGlowRef} rotation={[0.08, 0.12, -0.08]} scale={[1, 0.94, 1]} renderOrder={0}>
+        <torusGeometry args={[1.03, 0.13, 32, 160]} />
+        <meshBasicMaterial color={ORB_PALETTE.pink} transparent opacity={0.42} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
       </mesh>
 
       {/* Internal volume, cyan lead (lower), the second hue that makes the
           gradient read as glass rather than a flat tint. */}
-      <mesh ref={cyanGlowRef} position={[0, -0.45, 0]} renderOrder={0}>
-        <sphereGeometry args={[0.95, 48, 48]} />
-        <meshBasicMaterial color={ORB_PALETTE.cyan} transparent opacity={0.12} blending={THREE.AdditiveBlending} depthWrite={false} />
+      <mesh ref={cyanGlowRef} rotation={[-0.06, -0.1, 0.1]} scale={[0.91, 0.97, 0.91]} renderOrder={0}>
+        <torusGeometry args={[1.03, 0.07, 28, 160]} />
+        <meshBasicMaterial color={ORB_PALETTE.cyan} transparent opacity={0.3} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
       </mesh>
 
       {/* The glass shell, drawn after the internal colour so it does not
@@ -140,19 +144,20 @@ export function Orb({
       <mesh renderOrder={1}>
         <sphereGeometry args={shellArgs} />
         <meshPhysicalMaterial
-          color="#ffffff"
-          transmission={1}
+          color="#21051f"
           transparent
+          opacity={0.32}
           depthWrite={false}
-          roughness={0.08}
+          transmission={0.62}
+          roughness={0.1}
           metalness={0}
-          ior={1.45}
-          thickness={1.2}
-          envMapIntensity={1.5}
-          attenuationColor={ORB_PALETTE.tint}
-          attenuationDistance={2.5}
+          ior={1.48}
+          thickness={0.7}
+          attenuationColor="#35002f"
+          attenuationDistance={1.1}
+          envMapIntensity={0.4}
           clearcoat={1}
-          clearcoatRoughness={0.05}
+          clearcoatRoughness={0.04}
           side={THREE.DoubleSide}
         />
       </mesh>
@@ -161,15 +166,6 @@ export function Orb({
           than the shell's own single specular point: this is one of the
           most load-bearing details in the reference image and is easy to
           under-build. */}
-      <mesh position={[-0.65, 0.65, 1.1]} scale={[0.25, 1.5, 0.15]} renderOrder={2}>
-        <sphereGeometry args={[0.3, 24, 24]} />
-        <meshBasicMaterial color="#ffffff" transparent opacity={0.45} blending={THREE.AdditiveBlending} depthWrite={false} />
-      </mesh>
-      <mesh position={[0.5, -0.5, 1.0]} scale={[0.18, 0.9, 0.12]} renderOrder={2}>
-        <sphereGeometry args={[0.25, 24, 24]} />
-        <meshBasicMaterial color="#ffffff" transparent opacity={0.32} blending={THREE.AdditiveBlending} depthWrite={false} />
-      </mesh>
-
       {/* A very subtle outer glow, standing in for postprocessing bloom:
           @react-three/postprocessing's EffectComposer was tried earlier and
           dropped because it composites without preserving canvas alpha in

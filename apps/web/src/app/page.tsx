@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Info } from "lucide-react";
 import { AppBar } from "@/components/shell/AppBar";
@@ -9,6 +9,9 @@ import { OrbStage } from "@/components/orb/OrbStage";
 import { Composer } from "@/components/chat/Composer";
 import { Message } from "@/components/chat/Message";
 import { answerFor, FAQ } from "@/lib/faq";
+import { AnimatePresence, motion } from "framer-motion";
+import { OrbAssembly } from "@/components/orb/OrbAssembly";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 interface Turn {
   id: string;
@@ -23,7 +26,25 @@ const FALLBACK_TEXT = `I can answer these directly: ${FAQ.map((f) => f.question)
 
 export default function Home() {
   const [turns, setTurns] = useState<Turn[]>([]);
+  const [intro, setIntro] = useState<"checking" | "playing" | "ready">("checking");
+  const reducedMotion = useReducedMotion();
   const started = turns.length > 0;
+
+  useEffect(() => {
+    let seen = false;
+    try {
+      seen = sessionStorage.getItem("pukaar.intro.seen") === "1";
+    } catch {}
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- browser-only session preference is unavailable during SSR
+    setIntro(seen || reducedMotion ? "ready" : "playing");
+  }, [reducedMotion]);
+
+  const finishIntro = useCallback(() => {
+    try {
+      sessionStorage.setItem("pukaar.intro.seen", "1");
+    } catch {}
+    setIntro("ready");
+  }, []);
 
   // Local FAQ match first: instant, zero network, cannot be wrong. Only
   // questions outside those six ever reach the Groq fallback (/api/chat),
@@ -57,6 +78,15 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      <AnimatePresence>{intro === "playing" && <OrbAssembly onComplete={finishIntro} onSkip={finishIntro} />}</AnimatePresence>
+      <motion.div
+        className="flex min-h-screen flex-col"
+        initial={false}
+        animate={{ opacity: intro === "ready" ? 1 : 0, y: intro === "ready" ? 0 : 8 }}
+        transition={{ duration: reducedMotion ? 0 : 0.65, ease: [0.22, 1, 0.36, 1] }}
+        inert={intro !== "ready" ? true : undefined}
+        aria-hidden={intro !== "ready"}
+      >
       <AppBar
         actions={
           <Link href="/system">
@@ -129,6 +159,7 @@ export default function Home() {
           </p>
         </div>
       </main>
+      </motion.div>
     </div>
   );
 }

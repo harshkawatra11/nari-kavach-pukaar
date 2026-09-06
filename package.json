@@ -9,8 +9,8 @@
     "dev:relay": "pnpm --filter @pukaar/relay dev",
     "dev:wa": "node apps/wa-bridge/server.js",
     "build": "turbo run build",
-    "lint": "turbo run lint",
-    "test": "turbo run test",
+    "lint": "pnpm --filter @pukaar/web lint",
+    "test": "pnpm --filter @pukaar/core test && pnpm --filter @pukaar/relay test",
     "typecheck": "turbo run typecheck",
     "eval": "tsx eval/run.ts",
     "verify": "pnpm lint && pnpm test && pnpm build"

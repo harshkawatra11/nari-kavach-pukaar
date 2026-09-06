@@ -45,3 +45,5 @@ pnpm-debug.log*
 
 # Local design reference images, not part of the shipped product
 /ui inspo/
+
+.vercel
