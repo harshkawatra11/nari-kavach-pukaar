@@ -20,7 +20,7 @@ export function OrbScene({ reducedMotion, orbScale = 1 }: { reducedMotion: boole
   return (
     <Canvas
       dpr={[1, 1.75]}
-      camera={{ position: [0, 0, 4.2], fov: 40 }}
+      camera={{ position: [0, 0, 3.6], fov: 32 }}
       gl={{
         antialias: true,
         alpha: true,

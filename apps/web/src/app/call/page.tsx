@@ -37,6 +37,9 @@ function CallScreen() {
   const [session, setSession] = useState({ userName: "she", duressPhrase: "", language: "auto" as "hi-IN" | "en-IN" | "auto" });
 
   useEffect(() => {
+    // Runs once on mount to read window/sessionStorage, which don't exist
+    // during SSR; not a lazy useState initializer for the same reason.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOrigin(window.location.origin);
     setSession({
       userName: sessionStorage.getItem("pukaar.userName") ?? "she",

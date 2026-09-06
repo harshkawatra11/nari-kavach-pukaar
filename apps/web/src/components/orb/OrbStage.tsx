@@ -1,7 +1,9 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import dynamic from "next/dynamic";
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { StatusPill } from "@/components/ui/status-pill";
 
@@ -34,33 +36,81 @@ export function OrbStage({ phase, size = 320, showLabel = true }: { phase: strin
   // full-size canvas with CSS, which would still pay the full render cost.
   const orbScale = Math.min(1, size / 320);
 
+  // Mouse-parallax tilt: the glass catches light as the cursor moves. Kept to
+  // a small +-8deg range via useSpring so it reads as weight, not a toy.
+  const mvX = useMotionValue(0);
+  const mvY = useMotionValue(0);
+  const rotateX = useSpring(useTransform(mvY, [-0.5, 0.5], [8, -8]), { stiffness: 120, damping: 14 });
+  const rotateY = useSpring(useTransform(mvX, [-0.5, 0.5], [-8, 8]), { stiffness: 120, damping: 14 });
+
+  function onPointerMove(e: ReactPointerEvent<HTMLDivElement>) {
+    if (useStatic) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    mvX.set((e.clientX - r.left) / r.width - 0.5);
+    mvY.set((e.clientY - r.top) / r.height - 0.5);
+  }
+  function onPointerLeave() {
+    mvX.set(0);
+    mvY.set(0);
+  }
+
+  const pulsing = phase === "listening" || phase === "speaking";
+
   return (
-    <div className="flex flex-col items-center gap-5">
-      <div style={{ width: size, height: size }} className="relative">
-        {/* A deliberately faint glow, standing in for bloom (see OrbScene.tsx
-            for why postprocessing bloom is not used here). "The glass should
-            be sharp, only the light around it should bloom" - this stays
-            subtle so it reads as ambient light spill, not a second orb. */}
-        <div
-          aria-hidden
-          className="absolute rounded-full blur-3xl transition-colors duration-700"
-          style={{
-            inset: "-12%",
-            background:
-              phase === "speaking"
-                ? "radial-gradient(circle, #65eaff2a, transparent 70%)"
-                : phase === "thinking"
-                  ? "radial-gradient(circle, #b98cff26, transparent 70%)"
-                  : "radial-gradient(circle, #ff6fcf26, transparent 70%)",
-          }}
-        />
-        <Suspense fallback={<div className="absolute inset-0 rounded-full bg-surface-2 opacity-60 blur-2xl" />}>
-          <OrbScene reducedMotion={useStatic} orbScale={orbScale} />
-        </Suspense>
+    <motion.div
+      className="flex flex-col items-center gap-5"
+      initial={useStatic ? false : { opacity: 0, scale: 0.72, y: 18 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+    >
+      <div
+        style={{ width: size, height: size, perspective: 800 }}
+        className="relative"
+        onPointerMove={onPointerMove}
+        onPointerLeave={onPointerLeave}
+      >
+        <motion.div
+          className="absolute inset-0"
+          style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+        >
+          {/* A deliberately faint glow, standing in for bloom (see OrbScene.tsx
+              for why postprocessing bloom is not used here). "The glass should
+              be sharp, only the light around it should bloom" - this stays
+              subtle so it reads as ambient light spill, not a second orb. */}
+          <div
+            aria-hidden
+            className="absolute rounded-full blur-3xl transition-colors duration-700"
+            style={{
+              inset: "-12%",
+              background:
+                phase === "speaking"
+                  ? "radial-gradient(circle, #65eaff2a, transparent 70%)"
+                  : phase === "thinking"
+                    ? "radial-gradient(circle, #b98cff26, transparent 70%)"
+                    : "radial-gradient(circle, #ff6fcf26, transparent 70%)",
+            }}
+          />
+          <Suspense fallback={<div className="absolute inset-0 rounded-full bg-surface-2 opacity-60 blur-2xl" />}>
+            <OrbScene reducedMotion={useStatic} orbScale={orbScale} />
+          </Suspense>
+        </motion.div>
+        {/* Pulsing halo: a clean, regular pulse a viewer can register at a
+            glance, distinct from the shader's own continuous, jittery
+            amplitude reactivity. Colour and cadence tell listening and
+            speaking apart even with sound off, same principle as StatusPill. */}
+        {!useStatic && pulsing && (
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute rounded-full border-2"
+            style={{ inset: "-6%", borderColor: phase === "speaking" ? "#65eaff" : "#ff6fcf" }}
+            animate={{ opacity: [0.15, 0.55, 0.15], scale: [1, 1.035, 1] }}
+            transition={{ duration: phase === "speaking" ? 0.9 : 1.3, repeat: Infinity, ease: "easeInOut" }}
+          />
+        )}
         {useStatic && <StaticAmplitudeRing phase={phase} />}
       </div>
       {showLabel && <StatusPill phase={phase} />}
-    </div>
+    </motion.div>
   );
 }
 

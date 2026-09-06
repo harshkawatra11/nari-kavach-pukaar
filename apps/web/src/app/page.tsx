@@ -15,26 +15,44 @@ interface Turn {
   side: "left" | "right";
   text: string;
   action?: { label: string; href: string };
+  pending?: boolean;
 }
 
 const SUGGESTIONS = ["How does the alarm work?", "What gets stored?", "What does it cost to run?"];
+const FALLBACK_TEXT = `I can answer these directly: ${FAQ.map((f) => f.question).join("  ·  ")}`;
 
 export default function Home() {
   const [turns, setTurns] = useState<Turn[]>([]);
   const started = turns.length > 0;
 
-  function ask(text: string) {
-    const answer = answerFor(text);
-    setTurns((t) => [
-      ...t,
-      { id: crypto.randomUUID(), side: "right", text },
-      {
-        id: crypto.randomUUID(),
-        side: "left",
-        text: answer?.answer ?? `I can answer these directly: ${FAQ.map((f) => f.question).join("  ·  ")}`,
-        action: answer?.action,
-      },
-    ]);
+  // Local FAQ match first: instant, zero network, cannot be wrong. Only
+  // questions outside those six ever reach the Groq fallback (/api/chat),
+  // which is grounded in the same FAQ facts rather than free to invent
+  // claims about the product. Never both for the same question.
+  async function ask(text: string) {
+    setTurns((t) => [...t, { id: crypto.randomUUID(), side: "right", text }]);
+
+    const local = answerFor(text);
+    if (local) {
+      setTurns((t) => [...t, { id: crypto.randomUUID(), side: "left", text: local.answer, action: local.action }]);
+      return;
+    }
+
+    const pendingId = crypto.randomUUID();
+    setTurns((t) => [...t, { id: pendingId, side: "left", text: "", pending: true }]);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ question: text }),
+      });
+      const data = await res.json();
+      const answer: string = data.ok ? data.answer : FALLBACK_TEXT;
+      setTurns((t) => t.map((turn) => (turn.id === pendingId ? { ...turn, text: answer, pending: false } : turn)));
+    } catch {
+      setTurns((t) => t.map((turn) => (turn.id === pendingId ? { ...turn, text: FALLBACK_TEXT, pending: false } : turn)));
+    }
   }
 
   return (
@@ -52,7 +70,7 @@ export default function Home() {
       <main className="mx-auto flex w-full max-w-[720px] flex-1 flex-col px-5">
         {!started ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-6 pb-6">
-            <OrbStage phase="idle" size={200} showLabel={false} />
+            <OrbStage phase="idle" size={260} showLabel={false} />
             <div className="text-center">
               <h1 className="text-[length:var(--text-2xl)]">The call she is already pretending to be on</h1>
               <p className="mt-2 text-[length:var(--text-base)] text-ink-soft">
@@ -68,6 +86,7 @@ export default function Home() {
                 side={turn.side}
                 name={turn.side === "right" ? "You" : "Pukaar"}
                 showName={i === 0 || turns[i - 1].side !== turn.side}
+                muted={turn.pending}
                 footer={
                   turn.action ? (
                     <Link
@@ -79,7 +98,11 @@ export default function Home() {
                   ) : undefined
                 }
               >
-                {turn.text}
+                {turn.pending ? (
+                  <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse bg-current align-middle opacity-60" aria-hidden />
+                ) : (
+                  turn.text
+                )}
               </Message>
             ))}
           </div>
