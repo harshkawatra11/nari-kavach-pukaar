@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { AuroraField } from "@/components/field/AuroraField";
+import { AppBar } from "@/components/shell/AppBar";
 import { LiveMap } from "@/components/track/LiveMap";
 import type { GeoPoint } from "@pukaar/core";
 
@@ -44,21 +44,21 @@ export default function TrackPage({ params }: { params: Promise<{ token: string 
   }, [token]);
 
   return (
-    <main className="relative min-h-screen overflow-hidden">
-      <AuroraField intensity={0.4} />
-      <div className="relative max-w-2xl mx-auto px-6 py-16 flex flex-col gap-6">
+    <div className="flex min-h-screen flex-col">
+      <AppBar />
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-5 py-10">
         <div>
-          <h1 className="font-display font-semibold text-3xl">Following {state.userName}</h1>
-          <p className="font-body text-sm text-ink-soft mt-2">
+          <h1>Following {state.userName}</h1>
+          <p className="mt-2 text-[length:var(--text-base)] text-ink-soft">
             This page updates automatically while her session is active. Sent to you because Pukaar raised an alert.
           </p>
         </div>
         {state.error ? (
-          <p className="font-body text-sm text-magenta">{state.error}</p>
+          <p className="text-[length:var(--text-base)] text-alarm">{state.error}</p>
         ) : (
           <LiveMap trail={state.trail} alarm={state.alarm} userName={state.userName} />
         )}
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }

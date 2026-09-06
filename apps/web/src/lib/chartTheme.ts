@@ -2,24 +2,27 @@ import { Chart as ChartJS, registerables } from "chart.js";
 
 ChartJS.register(...registerables);
 
-// Chart palette drawn from the locked deck tokens, never a library default.
-// Per ui-ux-pro-max chart guidance: legends visible, tooltips on interact,
-// gridlines subtle, accessible contrast (all pairs here meet 3:1 against
-// white for large graphical elements).
+// Chart palette drawn from the v4 monochrome tokens (packages/ui/src/tokens.css),
+// never a library default. This file previously carried the v2 light-theme
+// ink colour (#0A0A0A) for ticks, legend and tooltip text, which on the dark
+// v3/v4 ground rendered every axis label near-invisible dark-grey-on-dark -
+// a real bug, not a taste call, caught by screenshot review. Values below
+// are the hex equivalents of the CSS custom properties, since Chart.js
+// canvas rendering cannot resolve var(...) itself.
 export const CHART_COLORS = {
-  plum: "#5C1A4B",
-  plumDeep: "#3A0E30",
-  gold: "#E8B33C",
-  magenta: "#E5399E",
-  plumTint: "#E8D5E2",
-  ink: "#0A0A0A",
-  grid: "rgba(10, 10, 10, 0.12)",
+  bar: "#8b6bb8", // --accent
+  barMuted: "#3a3a42", // --surface-3
+  alarm: "#e0568f", // --alarm
+  ink: "#f2f2f4", // --ink
+  inkFaint: "#8c8c96", // --ink-faint
+  grid: "rgba(255, 255, 255, 0.06)", // --hairline
+  tooltipBg: "#1f1f24", // --surface-3, opaque
 };
 
 export const CHART_FONT = {
-  family: "var(--font-inter), system-ui, sans-serif",
-  size: 13,
-  weight: 600 as const,
+  family: "var(--font-body), system-ui, sans-serif",
+  size: 12,
+  weight: 500 as const,
 };
 
 export const baseChartOptions = {
@@ -28,25 +31,27 @@ export const baseChartOptions = {
   plugins: {
     legend: {
       position: "bottom" as const,
-      labels: { font: CHART_FONT, color: CHART_COLORS.ink, usePointStyle: true, boxWidth: 10 },
+      labels: { font: CHART_FONT, color: CHART_COLORS.inkFaint, usePointStyle: true, boxWidth: 8 },
     },
     tooltip: {
-      backgroundColor: CHART_COLORS.ink,
+      backgroundColor: CHART_COLORS.tooltipBg,
       titleFont: CHART_FONT,
+      titleColor: CHART_COLORS.ink,
       bodyFont: CHART_FONT,
+      bodyColor: CHART_COLORS.ink,
       padding: 10,
-      cornerRadius: 0,
+      cornerRadius: 6,
       displayColors: true,
     },
   },
   scales: {
     x: {
       grid: { color: CHART_COLORS.grid },
-      ticks: { font: CHART_FONT, color: CHART_COLORS.ink },
+      ticks: { font: CHART_FONT, color: CHART_COLORS.inkFaint },
     },
     y: {
       grid: { color: CHART_COLORS.grid },
-      ticks: { font: CHART_FONT, color: CHART_COLORS.ink },
+      ticks: { font: CHART_FONT, color: CHART_COLORS.inkFaint },
       beginAtZero: true,
     },
   },

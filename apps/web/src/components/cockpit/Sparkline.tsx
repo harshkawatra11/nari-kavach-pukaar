@@ -14,23 +14,16 @@ export function Sparkline({ values, targetMs, width = 180, height = 48 }: { valu
 
   return (
     <svg width={width} height={height} role="img" aria-label={`Latency sparkline, last value ${values.at(-1) ?? 0} milliseconds, target ${targetMs} milliseconds`}>
-      <line x1={0} x2={width} y1={targetY} y2={targetY} stroke="var(--gold)" strokeWidth={1} strokeDasharray="3 3" />
+      <line x1={0} x2={width} y1={targetY} y2={targetY} stroke="var(--ink-ghost)" strokeWidth={1} strokeDasharray="3 3" />
       {points.length > 1 && (
-        <polyline
-          points={points.join(" ")}
-          fill="none"
-          stroke="var(--plum)"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <polyline points={points.join(" ")} fill="none" stroke="var(--ink-faint)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
       )}
       {points.length > 0 && (
         <circle
           cx={points.at(-1)!.split(",")[0]}
           cy={points.at(-1)!.split(",")[1]}
-          r={3.5}
-          fill={values.at(-1)! > targetMs * 1.5 ? "var(--magenta)" : "var(--plum)"}
+          r={3}
+          fill={values.at(-1)! > targetMs * 1.5 ? "var(--alarm)" : "var(--ink-soft)"}
         />
       )}
     </svg>

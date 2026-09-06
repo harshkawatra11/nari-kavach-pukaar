@@ -2,27 +2,29 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-// Luminous, not the deck's square ink-stroked look: soft radius, translucent
-// surfaces, colour used sparingly. Minimum 44px touch target maintained.
+// Monochrome chrome: colour appears only on the primary action, the danger
+// action, and the alarm state (see tokens.css). Everything else is neutral
+// surfaces distinguished by tone, not by hue. No inline style overrides; the
+// radius scale lives entirely in these class strings.
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap font-display font-medium transition-all disabled:pointer-events-none disabled:opacity-50 min-h-11 px-5 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-plum",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors duration-[var(--dur-fast)] disabled:pointer-events-none disabled:opacity-40 select-none",
   {
     variants: {
       variant: {
-        default: "bg-plum text-ground hover:bg-plum-deep shadow-sm",
-        gold: "bg-gold text-ink hover:brightness-95",
-        outline: "bg-surface-strong text-ink border border-border hover:bg-ground-2",
-        destructive: "bg-magenta text-ground hover:brightness-95",
-        ghost: "bg-transparent hover:bg-surface text-ink-soft",
+        primary: "bg-accent text-ink hover:bg-accent-hover",
+        secondary: "bg-surface-2 text-ink border border-hairline hover:bg-surface-3 hover:border-hairline-strong",
+        ghost: "text-ink-soft hover:bg-surface-2 hover:text-ink",
+        danger: "bg-alarm text-ink hover:brightness-110",
+        quiet: "text-ink-faint hover:text-ink",
       },
       size: {
-        default: "h-11",
-        sm: "h-9 px-4 text-sm",
-        lg: "h-14 px-8 text-base",
-        icon: "h-11 w-11 px-0",
+        sm: "h-8 px-3 text-[length:var(--text-sm)] rounded-[var(--radius-sm)]",
+        md: "h-10 px-4 text-[length:var(--text-base)] rounded-[var(--radius-md)]",
+        lg: "h-11 px-5 text-[length:var(--text-base)] rounded-[var(--radius-md)]",
+        icon: "h-9 w-9 rounded-[var(--radius-md)]",
       },
     },
-    defaultVariants: { variant: "default", size: "default" },
+    defaultVariants: { variant: "primary", size: "md" },
   },
 );
 
@@ -32,7 +34,7 @@ export interface ButtonProps
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, ...props }, ref) => (
-    <button ref={ref} className={cn(buttonVariants({ variant, size }), className)} style={{ borderRadius: "9999px" }} {...props} />
+    <button ref={ref} className={cn(buttonVariants({ variant, size }), className)} {...props} />
   ),
 );
 Button.displayName = "Button";

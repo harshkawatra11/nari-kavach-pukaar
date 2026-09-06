@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Contact, Lang } from "@pukaar/core";
-import { AuroraField } from "@/components/field/AuroraField";
+import { AppBar } from "@/components/shell/AppBar";
+import { SettingsGroup, SettingsRow } from "@/components/ui/settings-group";
 import { ContactForm } from "@/components/setup/ContactForm";
 import { DuressPhrasePicker } from "@/components/setup/DuressPhrasePicker";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
 export default function SetupPage() {
@@ -51,39 +51,57 @@ export default function SetupPage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden">
-      <AuroraField intensity={0.5} />
-      <div className="relative max-w-xl mx-auto px-6 py-16 flex flex-col gap-6">
-        <h1 className="font-display font-semibold text-3xl">Set up a session</h1>
-        <div>
-          <Label htmlFor="user-name">Your name</Label>
-          <Input id="user-name" value={userName} onChange={(e) => setUserName(e.target.value)} placeholder="Dayita" />
+    <div className="flex min-h-screen flex-col">
+      <AppBar back={{ href: "/", label: "Back" }} title="New session" />
+      <main className="mx-auto flex w-full max-w-[620px] flex-1 flex-col gap-7 px-5 py-8 pb-28">
+        <SettingsGroup label="Identity">
+          <SettingsRow label="Your name" htmlFor="user-name">
+            <Input id="user-name" value={userName} onChange={(e) => setUserName(e.target.value)} placeholder="Dayita" className="text-right" />
+          </SettingsRow>
+        </SettingsGroup>
+
+        <SettingsGroup
+          label="Trusted contacts"
+          footnote="Digits only, no plus sign. WhatsApp Desktop must be signed in on this laptop for the alert to actually send."
+        >
+          <ContactForm contacts={contacts} onChange={setContacts} />
+        </SettingsGroup>
+
+        <SettingsGroup
+          label="Safe word"
+          footnote="A full, ordinary-sounding sentence you would only say if you needed to. Distinctive phrases are recognised more reliably and are harder to say by accident."
+        >
+          <DuressPhrasePicker value={duressPhrase} onChange={setDuressPhrase} />
+        </SettingsGroup>
+
+        <SettingsGroup label="Voice">
+          <SettingsRow label="Language" htmlFor="language">
+            <select
+              id="language"
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as Lang)}
+              className="h-10 w-full max-w-[220px] rounded-[var(--radius-md)] border border-hairline bg-surface-2 px-3 text-[length:var(--text-base)] text-ink transition-colors hover:border-hairline-strong focus:border-[var(--focus)] focus:outline-none"
+            >
+              <option value="auto">Auto (Hinglish)</option>
+              <option value="hi-IN">Hindi</option>
+              <option value="en-IN">English</option>
+            </select>
+          </SettingsRow>
+        </SettingsGroup>
+
+        <div className="fixed inset-x-0 bottom-0 border-t border-hairline bg-ground px-5 py-3">
+          <div className="mx-auto flex max-w-[620px] items-center gap-3">
+            {error && (
+              <p role="alert" className="text-[length:var(--text-sm)] text-alarm">
+                {error}
+              </p>
+            )}
+            <Button className="ml-auto" onClick={handleStart} disabled={submitting}>
+              {submitting ? "Starting" : "Start call"}
+            </Button>
+          </div>
         </div>
-        <ContactForm contacts={contacts} onChange={setContacts} />
-        <DuressPhrasePicker value={duressPhrase} onChange={setDuressPhrase} />
-        <div>
-          <Label htmlFor="language">Language</Label>
-          <select
-            id="language"
-            value={language}
-            onChange={(e) => setLanguage(e.target.value as Lang)}
-            className="w-full h-11 bg-surface-strong border border-border px-4 font-body text-base"
-            style={{ borderRadius: "0.85rem" }}
-          >
-            <option value="auto">Auto (Hinglish code-switching)</option>
-            <option value="hi-IN">Hindi</option>
-            <option value="en-IN">English</option>
-          </select>
-        </div>
-        {error && (
-          <p className="font-body text-sm text-magenta" role="alert">
-            {error}
-          </p>
-        )}
-        <Button size="lg" onClick={handleStart} disabled={submitting} className="w-full">
-          {submitting ? "Starting..." : "Start the call"}
-        </Button>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }

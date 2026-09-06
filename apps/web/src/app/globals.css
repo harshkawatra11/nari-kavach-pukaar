@@ -10,16 +10,37 @@ body {
   background: var(--ground);
   color: var(--ink);
   font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1,
 h2,
-h3,
-.font-display {
+h3 {
   font-family: var(--font-display);
-  letter-spacing: -0.03em;
   text-wrap: balance;
+}
+h1 {
+  font-size: var(--text-2xl);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+h2 {
+  font-size: var(--text-xl);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.015em;
+  font-weight: 600;
+}
+h3 {
+  font-size: var(--text-lg);
+  line-height: var(--leading-snug);
+  font-weight: 600;
+}
+p {
+  text-wrap: pretty;
 }
 
 .font-mono {
@@ -27,15 +48,65 @@ h3,
   font-variant-numeric: tabular-nums;
 }
 
+.section-label {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-3) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: var(--radius-full);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 ::selection {
-  background: var(--magenta);
-  color: var(--ground);
+  background: var(--accent);
+  color: var(--ink);
 }
 
 /* Cover mode owns its own colour scheme; nothing above this line applies
    inside it, which is deliberate: cover mode must not accidentally inherit
-   an aurora token and betray the console underneath. */
+   an app token and betray the console underneath. */
 .cover-mode {
   background: var(--cover);
   color: var(--cover-ink);
+}
+
+/* OrbGlyph keyframes (components/ui/orb-glyph.tsx). Not Tailwind utilities:
+   these are specific enough (rotation, staggered pulse rings) that a custom
+   keyframe is clearer than composing arbitrary-value utility classes. */
+@keyframes orb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes orb-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
 }

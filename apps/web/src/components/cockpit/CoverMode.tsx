@@ -44,32 +44,34 @@ export function CoverMode({ visible, onExit }: { visible: boolean; onExit: () =>
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
-          className="cover-mode fixed inset-0 flex flex-col items-center justify-between py-16"
-          style={{ zIndex: 60 }}
+          className="cover-mode fixed inset-0 z-[var(--z-cover)] flex flex-col items-center justify-between py-16"
           onClick={onExit}
           role="button"
           tabIndex={0}
           aria-label="Tap anywhere or press Escape to return to the console"
         >
-          <div className="text-center mt-12">
-            <p className="font-display text-2xl" style={{ color: "var(--cover-ink)" }}>Maa</p>
-            <p className="font-mono text-base mt-3" style={{ color: "var(--cover-ink-soft)" }}>{mm}:{ss}</p>
+          <div className="mt-12 text-center">
+            <p className="text-[length:var(--text-xl)]" style={{ color: "var(--cover-ink)" }}>
+              Maa
+            </p>
+            <p className="mt-3 font-mono text-[length:var(--text-base)]" style={{ color: "var(--cover-ink-soft)" }}>
+              {mm}:{ss}
+            </p>
           </div>
           <div className="flex gap-10">
             <div
-              className="w-16 h-16 flex items-center justify-center rounded-full"
-              style={{ borderRadius: "50%", background: "oklch(0.3 0.02 330)" }}
+              className="flex h-16 w-16 items-center justify-center rounded-[var(--radius-full)]"
+              style={{ background: "oklch(0.16 0.004 300)" }}
             >
-              <Mic className="w-6 h-6" style={{ color: "var(--cover-ink)" }} aria-hidden />
+              <Mic className="h-6 w-6" style={{ color: "var(--cover-ink)" }} aria-hidden />
             </div>
-            <div
-              className="w-16 h-16 flex items-center justify-center rounded-full"
-              style={{ borderRadius: "50%", background: "var(--magenta)" }}
-            >
-              <PhoneOff className="w-6 h-6" style={{ color: "var(--cover-ink)" }} aria-hidden />
+            <div className="flex h-16 w-16 items-center justify-center rounded-[var(--radius-full)]" style={{ background: "var(--alarm)" }}>
+              <PhoneOff className="h-6 w-6" style={{ color: "var(--cover-ink)" }} aria-hidden />
             </div>
           </div>
-          <p className="font-mono text-xs" style={{ color: "var(--cover-ink-soft)" }}>On call</p>
+          <p className="font-mono text-[length:var(--text-xs)]" style={{ color: "var(--cover-ink-soft)" }}>
+            On call
+          </p>
         </motion.div>
       )}
     </AnimatePresence>

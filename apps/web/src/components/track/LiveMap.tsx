@@ -25,22 +25,22 @@ export function LiveMap({ trail, alarm, userName }: { trail: GeoPoint[]; alarm: 
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="relative aspect-video bg-surface-strong border border-border rounded-2xl overflow-hidden" style={{ borderRadius: "1.25rem" }}>
+      <div className="relative aspect-video overflow-hidden rounded-[var(--radius-lg)] border border-hairline bg-surface-1">
         {point ? (
           <>
-            <div className="absolute inset-0" style={{ background: "radial-gradient(circle at 50% 50%, var(--aurora-lilac), var(--ground) 70%)" }} />
+            <div className="absolute inset-0 bg-surface-2" />
             <motion.div
               initial={{ scale: 0.6, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
             >
-              <span className="block w-4 h-4 rounded-full bg-magenta" style={{ borderRadius: "50%" }} />
-              <span className="absolute inset-0 w-4 h-4 rounded-full bg-magenta animate-ping" style={{ borderRadius: "50%" }} />
+              <span className="block h-4 w-4 rounded-[var(--radius-full)] bg-alarm" />
+              <span className="absolute inset-0 h-4 w-4 animate-ping rounded-[var(--radius-full)] bg-alarm" />
             </motion.div>
           </>
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center font-body text-ink-faint">
-            Waiting for a location update...
+          <div className="absolute inset-0 flex items-center justify-center text-[length:var(--text-base)] text-ink-faint">
+            Waiting for a location update
           </div>
         )}
       </div>
@@ -48,12 +48,12 @@ export function LiveMap({ trail, alarm, userName }: { trail: GeoPoint[]; alarm: 
       {point && (
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-body text-sm text-ink-soft">Last known position, updated {agoLabel(point.at)}</p>
-            <p className="font-mono text-xs text-ink-faint mt-1">
+            <p className="text-[length:var(--text-base)] text-ink-soft">Last known position, updated {agoLabel(point.at)}</p>
+            <p className="mt-1 font-mono text-[length:var(--text-xs)] text-ink-faint">
               {point.lat.toFixed(5)}, {point.lng.toFixed(5)} &middot; &plusmn;{Math.round(point.accuracyM)}m
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => window.open(mapsLink(point), "_blank", "noopener,noreferrer")}>
+          <Button variant="secondary" size="sm" onClick={() => window.open(mapsLink(point), "_blank", "noopener,noreferrer")}>
             Open in Maps
           </Button>
         </div>
@@ -61,8 +61,9 @@ export function LiveMap({ trail, alarm, userName }: { trail: GeoPoint[]; alarm: 
 
       <div className="flex items-center gap-3">
         {alarm.raised ? (
-          <Badge variant="magenta">
-            {userName} said her safe word{alarm.at ? ` at ${new Date(alarm.at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}` : ""}
+          <Badge variant="alarm">
+            {userName} said her safe word
+            {alarm.at ? ` at ${new Date(alarm.at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}` : ""}
           </Badge>
         ) : (
           <Badge variant="idle">No alert has been raised in this session</Badge>

@@ -2,16 +2,13 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Mic } from "lucide-react";
-import { AuroraField } from "@/components/field/AuroraField";
-import { OrbStage } from "@/components/orb/OrbStage";
 import { CockpitRail } from "@/components/cockpit/CockpitRail";
-import { TranscriptDock } from "@/components/cockpit/TranscriptDock";
-import { TelemetryColumn } from "@/components/cockpit/TelemetryColumn";
+import { CallHeader } from "@/components/cockpit/CallHeader";
+import { MessageList } from "@/components/cockpit/MessageList";
+import { CallDock } from "@/components/cockpit/CallDock";
+import { Inspector } from "@/components/cockpit/Inspector";
 import { CoverMode } from "@/components/cockpit/CoverMode";
 import { AlarmToast, type AlarmContactResult } from "@/components/cockpit/AlarmToast";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useVoiceSession } from "@/hooks/useVoiceSession";
 import { useLocalDuressSpotter } from "@/hooks/useLocalDuressSpotter";
 import { useGeoTrail } from "@/hooks/useGeoTrail";
@@ -27,15 +24,28 @@ function CallScreen() {
   const [alarmVisible, setAlarmVisible] = useState(false);
   const [alarmPath, setAlarmPath] = useState<string | null>(null);
   const [alarmContacts, setAlarmContacts] = useState<AlarmContactResult[]>([]);
-  const [typedInput, setTypedInput] = useState("");
 
-  const userName = typeof window !== "undefined" ? sessionStorage.getItem("pukaar.userName") ?? "she" : "she";
-  const duressPhrase = typeof window !== "undefined" ? sessionStorage.getItem("pukaar.duressPhrase") ?? "" : "";
-  const language = (typeof window !== "undefined" ? sessionStorage.getItem("pukaar.language") : null) as
-    | "hi-IN"
-    | "en-IN"
-    | "auto"
-    | null;
+  // sessionStorage does not exist during SSR. Reading it inline during
+  // render (typeof window !== "undefined" ? ... : fallback) makes the
+  // server-rendered HTML use the fallback branch and the client's first
+  // render use the real branch, which is a genuine React hydration
+  // mismatch, not just a lint nit: it showed up as a real console error
+  // once the Inspector's conditional "Open contact view" button made the
+  // mismatch visible in the DOM tree shape. Reading these once in an effect
+  // and holding them in state is the correct fix, not a suppression.
+  const [origin, setOrigin] = useState<string | null>(null);
+  const [session, setSession] = useState({ userName: "she", duressPhrase: "", language: "auto" as "hi-IN" | "en-IN" | "auto" });
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+    setSession({
+      userName: sessionStorage.getItem("pukaar.userName") ?? "she",
+      duressPhrase: sessionStorage.getItem("pukaar.duressPhrase") ?? "",
+      language: (sessionStorage.getItem("pukaar.language") as "hi-IN" | "en-IN" | "auto" | null) ?? "auto",
+    });
+  }, []);
+
+  const { userName, duressPhrase, language } = session;
 
   const { state, start, sendTyped } = useVoiceSession({
     sessionId,
@@ -95,74 +105,50 @@ function CallScreen() {
     window.dispatchEvent(new Event("pukaar:kill-relay"));
   }
 
-  const trackUrl = trackToken && typeof window !== "undefined" ? `${window.location.origin}/t/${trackToken}` : null;
+  const trackUrl = trackToken && origin ? `${origin}/t/${trackToken}` : null;
 
   return (
-    <main className="relative min-h-screen overflow-hidden">
-      <AuroraField intensity={coverMode ? 0 : 0.85} />
+    <div className="flex h-screen overflow-hidden">
       <CockpitRail onCoverMode={() => setCoverMode(true)} onEnd={() => router.push("/")} />
-      <AlarmToast visible={alarmVisible} path={alarmPath} contacts={alarmContacts} trackUrl={trackUrl} />
 
-      <div className="relative flex flex-col items-center justify-between min-h-screen pl-16 pt-10 pb-8">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <CallHeader phase={state.phase} connected={state.connected} started={started} />
+
         {state.errorMessage && (
-          <p className="font-body text-sm text-magenta bg-surface-strong px-4 py-2 rounded-full mb-4" role="alert" style={{ borderRadius: "9999px" }}>
+          <p role="alert" className="mx-auto mt-3 max-w-[760px] rounded-[var(--radius-md)] border border-hairline bg-surface-1 px-3 py-2 text-[length:var(--text-sm)] text-alarm">
             {state.errorMessage}
           </p>
         )}
 
-        <div className="flex-1 flex items-center">
-          <OrbStage phase={state.phase} size={300} />
-        </div>
+        <MessageList lines={state.lines} />
 
-        <div className="w-full px-8">
-          <TranscriptDock lines={state.lines} />
-        </div>
-
-        <div className="w-full max-w-md px-8 mt-6">
-          {!started ? (
-            <Button size="lg" onClick={handleStart} className="w-full">
-              <Mic className="w-5 h-5" aria-hidden />
-              Start the call
-            </Button>
-          ) : state.sttMode === "rest" ? (
-            <form
-              className="flex gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!typedInput.trim()) return;
-                sendTyped(typedInput.trim());
-                setTypedInput("");
-              }}
-            >
-              <Input
-                value={typedInput}
-                onChange={(e) => setTypedInput(e.target.value)}
-                placeholder="Microphone unavailable. Type what you would say."
-                aria-label="Typed fallback message"
-              />
-              <Button type="submit">Send</Button>
-            </form>
-          ) : null}
-        </div>
+        <CallDock
+          started={started}
+          phase={state.phase}
+          sttMode={state.sttMode}
+          onStart={handleStart}
+          onEnd={() => router.push("/")}
+          onSendTyped={sendTyped}
+        />
       </div>
 
-      <aside className="fixed right-8 top-1/2 -translate-y-1/2 z-[20] hidden lg:block">
-        <TelemetryColumn
-          lastTurnMs={state.lastTurnMs}
-          path1State={state.alarmFired && alarmPath === "server-tool" ? "fired" : started ? "armed" : "idle"}
-          path2State={!spotter.available ? "unavailable" : spotter.fired ? "fired" : started ? "armed" : "idle"}
-          onKillRelay={handleKillRelay}
-        />
-      </aside>
+      <Inspector
+        lastTurnMs={state.lastTurnMs}
+        path1State={state.alarmFired && alarmPath === "server-tool" ? "fired" : started ? "armed" : "idle"}
+        path2State={!spotter.available ? "unavailable" : spotter.fired ? "fired" : started ? "armed" : "idle"}
+        trackUrl={trackUrl}
+        onKillRelay={handleKillRelay}
+      />
 
+      <AlarmToast visible={alarmVisible} path={alarmPath} contacts={alarmContacts} trackUrl={trackUrl} />
       <CoverMode visible={coverMode} onExit={() => setCoverMode(false)} />
-    </main>
+    </div>
   );
 }
 
 export default function CallPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center font-body text-ink-soft">Loading...</div>}>
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-[length:var(--text-base)] text-ink-soft">Loading…</div>}>
       <CallScreen />
     </Suspense>
   );

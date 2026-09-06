@@ -16,8 +16,10 @@ export const TooltipContent = React.forwardRef<
     <TooltipPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
-      className={cn("z-[100] bg-ink text-ground px-3 py-1.5 font-body text-sm max-w-xs rounded-lg", className)}
-      style={{ borderRadius: "0.6rem" }}
+      className={cn(
+        "z-[var(--z-tooltip)] bg-surface-3 text-ink border border-hairline px-2 py-1 text-[length:var(--text-xs)] max-w-xs rounded-[var(--radius-sm)]",
+        className,
+      )}
       {...props}
     />
   </TooltipPrimitive.Portal>

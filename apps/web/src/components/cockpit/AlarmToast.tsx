@@ -11,6 +11,10 @@ export interface AlarmContactResult {
   error?: string;
 }
 
+/** Quiet delivery, not a solid alarm-coloured panel: a neutral surface with a
+ *  2px accent bar, matching the monochrome system. The product's whole claim
+ *  is that nothing visibly changes when the alarm fires; the notification
+ *  that tells the room it happened should not shout either. */
 export function AlarmToast({
   visible,
   path,
@@ -26,33 +30,33 @@ export function AlarmToast({
     <AnimatePresence>
       {visible && (
         <motion.div
-          initial={{ opacity: 0, y: -20, scale: 0.96 }}
+          initial={{ opacity: 0, y: -20, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -20, scale: 0.96 }}
-          transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+          exit={{ opacity: 0, y: -20, scale: 0.97 }}
+          transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
           role="alert"
           aria-live="assertive"
-          className="fixed top-6 left-1/2 -translate-x-1/2 w-full max-w-md px-4"
-          style={{ zIndex: 90 }}
+          className="fixed left-1/2 top-4 z-[var(--z-toast)] w-full max-w-md -translate-x-1/2 px-4"
         >
-          <div className="bg-magenta text-ground rounded-2xl px-5 py-4 shadow-lg" style={{ borderRadius: "1.25rem" }}>
+          <div className="relative overflow-hidden rounded-[var(--radius-lg)] border border-hairline bg-surface-2 pl-5 pr-4 py-4 shadow-[var(--shadow-md)]">
+            <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-alarm" />
             <div className="flex items-start gap-3">
-              <TriangleAlert className="w-5 h-5 flex-shrink-0 mt-0.5" aria-hidden />
+              <TriangleAlert className="h-4 w-4 shrink-0 translate-y-0.5 text-alarm" aria-hidden />
               <div className="flex-1">
-                <p className="font-display font-semibold text-base">Alarm raised{path ? ` · ${path}` : ""}</p>
+                <p className="text-[length:var(--text-base)] font-medium text-ink">Alarm raised{path ? ` · ${path}` : ""}</p>
                 <ul className="mt-1.5 flex flex-col gap-0.5">
                   {contacts.map((c) => (
-                    <li key={c.phone} className="font-body text-sm opacity-95">
+                    <li key={c.phone} className="text-[length:var(--text-sm)] text-ink-soft">
                       {c.name}: {c.sent ? "message sent" : `failed (${c.error ?? "unknown error"})`}
                     </li>
                   ))}
-                  {contacts.length === 0 && <li className="font-body text-sm opacity-80">Dispatching...</li>}
+                  {contacts.length === 0 && <li className="text-[length:var(--text-sm)] text-ink-faint">Dispatching&hellip;</li>}
                 </ul>
                 {trackUrl && (
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
-                    className="mt-3 bg-ground text-ink border-0"
+                    className="mt-3"
                     onClick={() => window.open(trackUrl, "_blank", "noopener,noreferrer")}
                   >
                     Open contact view
