@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import type { RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import gsap from "gsap";
@@ -26,17 +27,41 @@ export const ORB_PALETTE = {
   tint: "#f6d9ff", // the glass shell's own attenuation tint
 } as const;
 
-export function Orb({ reducedMotion, scale: baseScale = 1 }: { reducedMotion: boolean; scale?: number }) {
+export function Orb({
+  reducedMotion,
+  scale: baseScale = 1,
+  pointer,
+}: {
+  reducedMotion: boolean;
+  scale?: number;
+  /** Normalized pointer position (-0.5..0.5 on each axis, 0 at rest), read
+   *  live each frame rather than passed as re-rendering props. Drives a
+   *  small real rotation of the group so the glass shell actually shows a
+   *  different angle of refraction/highlight as the cursor moves - genuine
+   *  parallax on the geometry itself, not a CSS tilt of the flat canvas
+   *  image (which was tried first and looked like tilting a photograph). */
+  pointer?: RefObject<{ x: number; y: number }>;
+}) {
   const groupRef = useRef<THREE.Group>(null);
   const pinkGlowRef = useRef<THREE.Mesh>(null);
   const cyanGlowRef = useRef<THREE.Mesh>(null);
   const smoothedAmp = useRef(0);
   const lastAlarmSeen = useRef(0);
   const clock = useRef(0);
+  const tilt = useRef({ x: 0, z: 0 });
 
   useFrame((_state, delta) => {
     if (!groupRef.current) return;
     clock.current += delta;
+
+    if (pointer) {
+      const targetX = pointer.current.y * 0.3;
+      const targetZ = -pointer.current.x * 0.3;
+      tilt.current.x += (targetX - tilt.current.x) * Math.min(1, delta * 5);
+      tilt.current.z += (targetZ - tilt.current.z) * Math.min(1, delta * 5);
+      groupRef.current.rotation.x = tilt.current.x;
+      groupRef.current.rotation.z = tilt.current.z;
+    }
 
     const analyser = orbAudio.phase === "speaking" ? orbAudio.ttsAnalyser : orbAudio.micAnalyser;
     const target = analyser ? analyserRms(analyser) : 0;

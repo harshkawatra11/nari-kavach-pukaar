@@ -1,5 +1,6 @@
 "use client";
 
+import type { RefObject } from "react";
 import { Canvas } from "@react-three/fiber";
 import { ContactShadows, Environment } from "@react-three/drei";
 import * as THREE from "three";
@@ -16,11 +17,19 @@ import { Orb } from "./Orb";
  *  canvas as an opaque square and hid the AuroraField behind it (verified by
  *  toggling the composer on and off). The soft glow around the orb comes
  *  from a CSS blur behind the canvas instead (see OrbStage.tsx). */
-export function OrbScene({ reducedMotion, orbScale = 1 }: { reducedMotion: boolean; orbScale?: number }) {
+export function OrbScene({
+  reducedMotion,
+  orbScale = 1,
+  pointer,
+}: {
+  reducedMotion: boolean;
+  orbScale?: number;
+  pointer?: RefObject<{ x: number; y: number }>;
+}) {
   return (
     <Canvas
       dpr={[1, 1.75]}
-      camera={{ position: [0, 0, 3.6], fov: 32 }}
+      camera={{ position: [0, 0, 4.2], fov: 40 }}
       gl={{
         antialias: true,
         alpha: true,
@@ -33,7 +42,7 @@ export function OrbScene({ reducedMotion, orbScale = 1 }: { reducedMotion: boole
       <ambientLight intensity={0.6} />
       <directionalLight position={[3, 4, 2]} intensity={0.9} />
       <directionalLight position={[-3, -1, 2]} intensity={0.4} color="#7C4FE0" />
-      <Orb reducedMotion={reducedMotion} scale={orbScale} />
+      <Orb reducedMotion={reducedMotion} scale={orbScale} pointer={pointer} />
       {!reducedMotion && (
         <>
           {/* The reflection: a soft contact shadow beneath the orb, matching

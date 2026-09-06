@@ -1,9 +1,9 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import dynamic from "next/dynamic";
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { motion } from "framer-motion";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { StatusPill } from "@/components/ui/status-pill";
 
@@ -36,22 +36,25 @@ export function OrbStage({ phase, size = 320, showLabel = true }: { phase: strin
   // full-size canvas with CSS, which would still pay the full render cost.
   const orbScale = Math.min(1, size / 320);
 
-  // Mouse-parallax tilt: the glass catches light as the cursor moves. Kept to
-  // a small +-8deg range via useSpring so it reads as weight, not a toy.
-  const mvX = useMotionValue(0);
-  const mvY = useMotionValue(0);
-  const rotateX = useSpring(useTransform(mvY, [-0.5, 0.5], [8, -8]), { stiffness: 120, damping: 14 });
-  const rotateY = useSpring(useTransform(mvX, [-0.5, 0.5], [-8, 8]), { stiffness: 120, damping: 14 });
+  // Mouse-parallax: the glass catches light as the cursor moves. Driven as a
+  // real rotation of the orb's own three.js group (see Orb.tsx), not a CSS
+  // transform on the canvas element - tilting the DOM node would skew the
+  // flat rendered image like a photograph rather than showing a different
+  // angle of refraction, and was tried first and looked wrong. Held in a
+  // ref, not state: read once per r3f frame, no React re-render per pixel
+  // of mouse movement.
+  const pointer = useRef({ x: 0, y: 0 });
 
   function onPointerMove(e: ReactPointerEvent<HTMLDivElement>) {
     if (useStatic) return;
     const r = e.currentTarget.getBoundingClientRect();
-    mvX.set((e.clientX - r.left) / r.width - 0.5);
-    mvY.set((e.clientY - r.top) / r.height - 0.5);
+    pointer.current = {
+      x: (e.clientX - r.left) / r.width - 0.5,
+      y: (e.clientY - r.top) / r.height - 0.5,
+    };
   }
   function onPointerLeave() {
-    mvX.set(0);
-    mvY.set(0);
+    pointer.current = { x: 0, y: 0 };
   }
 
   const pulsing = phase === "listening" || phase === "speaking";
@@ -64,36 +67,31 @@ export function OrbStage({ phase, size = 320, showLabel = true }: { phase: strin
       transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
     >
       <div
-        style={{ width: size, height: size, perspective: 800 }}
+        style={{ width: size, height: size }}
         className="relative"
         onPointerMove={onPointerMove}
         onPointerLeave={onPointerLeave}
       >
-        <motion.div
-          className="absolute inset-0"
-          style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-        >
-          {/* A deliberately faint glow, standing in for bloom (see OrbScene.tsx
-              for why postprocessing bloom is not used here). "The glass should
-              be sharp, only the light around it should bloom" - this stays
-              subtle so it reads as ambient light spill, not a second orb. */}
-          <div
-            aria-hidden
-            className="absolute rounded-full blur-3xl transition-colors duration-700"
-            style={{
-              inset: "-12%",
-              background:
-                phase === "speaking"
-                  ? "radial-gradient(circle, #65eaff2a, transparent 70%)"
-                  : phase === "thinking"
-                    ? "radial-gradient(circle, #b98cff26, transparent 70%)"
-                    : "radial-gradient(circle, #ff6fcf26, transparent 70%)",
-            }}
-          />
-          <Suspense fallback={<div className="absolute inset-0 rounded-full bg-surface-2 opacity-60 blur-2xl" />}>
-            <OrbScene reducedMotion={useStatic} orbScale={orbScale} />
-          </Suspense>
-        </motion.div>
+        {/* A deliberately faint glow, standing in for bloom (see OrbScene.tsx
+            for why postprocessing bloom is not used here). "The glass should
+            be sharp, only the light around it should bloom" - this stays
+            subtle so it reads as ambient light spill, not a second orb. */}
+        <div
+          aria-hidden
+          className="absolute rounded-full blur-3xl transition-colors duration-700"
+          style={{
+            inset: "-12%",
+            background:
+              phase === "speaking"
+                ? "radial-gradient(circle, #65eaff2a, transparent 70%)"
+                : phase === "thinking"
+                  ? "radial-gradient(circle, #b98cff26, transparent 70%)"
+                  : "radial-gradient(circle, #ff6fcf26, transparent 70%)",
+          }}
+        />
+        <Suspense fallback={<div className="absolute inset-0 rounded-full bg-surface-2 opacity-60 blur-2xl" />}>
+          <OrbScene reducedMotion={useStatic} orbScale={orbScale} pointer={pointer} />
+        </Suspense>
         {/* Pulsing halo: a clean, regular pulse a viewer can register at a
             glance, distinct from the shader's own continuous, jittery
             amplitude reactivity. Colour and cadence tell listening and
