@@ -27,5 +27,14 @@ export function shouldPersistPing(last: GeoPoint | null, next: GeoPoint): boolea
 }
 
 export function mapsLink(point: GeoPoint): string {
-  return `https://maps.google.com/?q=${point.lat},${point.lng}`;
+  const query = encodeURIComponent(`${point.lat},${point.lng}`);
+  return `https://www.google.com/maps/search/?api=1&query=${query}`;
+}
+
+export type LocationStatus = "live" | "stale" | "unavailable";
+
+export function locationFreshness(point: GeoPoint | null, now = Date.now()): { capturedAt: number | null; ageMs: number | null; status: LocationStatus } {
+  if (!point) return { capturedAt: null, ageMs: null, status: "unavailable" };
+  const ageMs = Math.max(0, now - point.at);
+  return { capturedAt: point.at, ageMs, status: ageMs <= 60000 ? "live" : "stale" };
 }

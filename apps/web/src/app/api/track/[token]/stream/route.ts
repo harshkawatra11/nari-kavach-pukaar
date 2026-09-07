@@ -1,4 +1,5 @@
 import { getSessionByTrackToken } from "@/lib/firestore/sessions";
+import { locationFreshness } from "@pukaar/core";
 
 // Server-sent events for the live contact-view map. All four of these are
 // required or the stream buffers and nothing arrives at the browser:
@@ -28,19 +29,35 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
       };
 
+      const finish = () => {
+        if (pollInterval) clearInterval(pollInterval);
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        if (!closed) controller.close();
+        closed = true;
+      };
+
       const poll = async () => {
         if (closed) return;
         try {
           const session = await getSessionByTrackToken(token);
           if (!session) {
             send("error", { message: "This tracking link is no longer active." });
+            finish();
             return;
           }
+          if (session.expiresAt.toMillis() <= Date.now()) {
+            send("error", { message: "This tracking link has expired." });
+            finish();
+            return;
+          }
+          const latestPoint = session.trail.at(-1) ?? null;
           const payload = JSON.stringify({
             status: session.status,
             trail: session.trail,
             alarm: session.alarm,
             userName: session.userName,
+            expiresAt: session.expiresAt.toMillis(),
+            location: locationFreshness(latestPoint),
           });
           if (payload !== lastPayload) {
             lastPayload = payload;

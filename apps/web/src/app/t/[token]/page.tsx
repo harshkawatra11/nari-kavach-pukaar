@@ -10,6 +10,7 @@ interface TrackState {
   trail: GeoPoint[];
   alarm: { raised: boolean; at: number | null; path: string | null; reason: string | null };
   userName: string;
+  expiresAt: number | null;
   error: string | null;
 }
 
@@ -20,6 +21,7 @@ export default function TrackPage({ params }: { params: Promise<{ token: string 
     trail: [],
     alarm: { raised: false, at: null, path: null, reason: null },
     userName: "she",
+    expiresAt: null,
     error: null,
   });
 
@@ -35,6 +37,7 @@ export default function TrackPage({ params }: { params: Promise<{ token: string 
         try {
           const data = JSON.parse(raw);
           setState((s) => ({ ...s, error: data.message ?? "Connection lost." }));
+          es.close();
         } catch {
           /* connection-level error event, no payload */
         }
@@ -52,6 +55,7 @@ export default function TrackPage({ params }: { params: Promise<{ token: string 
           <p className="mt-2 text-[length:var(--text-base)] text-ink-soft">
             This page updates automatically while her session is active. Sent to you because Pukaar raised an alert.
           </p>
+          {state.status === "ended" && <p className="mt-2 text-[length:var(--text-sm)] text-ink-faint">Session ended. Showing the final recorded position.</p>}
         </div>
         {state.error ? (
           <p className="text-[length:var(--text-base)] text-alarm">{state.error}</p>

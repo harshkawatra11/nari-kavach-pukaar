@@ -8,7 +8,8 @@ export interface AlertRecord {
   path: TriggerPath;
   reason: string;
   at: number;
-  contacts: { name: string; phone: string; sent: boolean; error?: string }[];
+  contacts: { name: string; phone: string; submitted?: boolean; sent?: boolean; error?: string }[];
+  foregroundRestored?: boolean;
 }
 
 export async function recordAlert(record: AlertRecord): Promise<string> {

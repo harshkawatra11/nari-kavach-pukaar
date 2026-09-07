@@ -2,7 +2,7 @@ import { buildAlertMessage, mapsLink } from "@pukaar/core";
 import type { TriggerPath } from "@pukaar/core";
 import { getDb } from "@/lib/firestore/admin";
 import { recordAlert } from "@/lib/firestore/alerts";
-import { sendWhatsAppAlert } from "@/lib/wa/bridge";
+import { sendWhatsAppAlerts } from "@/lib/wa/bridge";
 import { env } from "@/lib/env";
 
 const DEDUPE_WINDOW_MS = 15000;
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
   const session = outcome.session;
   const trail = (session.trail ?? []) as { lat: number; lng: number; accuracyM: number; at: number }[];
   const lastPoint = trail.length > 0 ? trail[trail.length - 1] : null;
-  const trackUrl = `${env.PUBLIC_ORIGIN}/t/${session.trackToken}`;
+  const trackUrl = `${env.PUBLIC_TRACKING_ORIGIN}/t/${session.trackToken}`;
   const timeHHMM = new Date(outcome.at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false });
 
   const message = buildAlertMessage({
@@ -70,21 +70,15 @@ export async function POST(req: Request) {
   });
 
   const contacts = (session.contacts ?? []) as { name: string; phone: string }[];
-  const results = [];
-  for (const contact of contacts) {
-    // Sequential, not parallel: WhatsApp Desktop has exactly one window, so
-    // the bridge itself serializes, but sending sequentially here keeps the
-    // ordering predictable and the per-contact timeout meaningful.
-    const result = await sendWhatsAppAlert({ name: contact.name, phone: contact.phone, message });
-    results.push(result);
-  }
+  const dispatch = await sendWhatsAppAlerts({ contacts, message, returnDelayMs: 2000 });
 
   await recordAlert({
     sessionId: body.sessionId,
     path: body.path,
     reason: body.reason ?? "",
     at: outcome.at,
-    contacts: results,
+    contacts: dispatch.contacts,
+    foregroundRestored: dispatch.foregroundRestored,
   });
 
   return Response.json({
@@ -92,6 +86,7 @@ export async function POST(req: Request) {
     path: body.path,
     trackUrl,
     mapsLink: lastPoint ? mapsLink(lastPoint) : null,
-    contacts: results,
+    contacts: dispatch.contacts,
+    foregroundRestored: dispatch.foregroundRestored,
   });
 }

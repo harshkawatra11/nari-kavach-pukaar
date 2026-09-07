@@ -15,7 +15,7 @@
         "SARVAM_SPEAKER",
         "STT_MODE",
         "TTS_MODE",
-        "NEXT_PUBLIC_PUBLIC_ORIGIN"
+        "PUBLIC_TRACKING_ORIGIN"
       ]
     },
     "dev": {

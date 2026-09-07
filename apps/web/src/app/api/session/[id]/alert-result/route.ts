@@ -12,5 +12,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (snap.empty) return Response.json({ ok: true, found: false });
   const docs = snap.docs.map((d) => d.data()).sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
   const data = docs[0];
-  return Response.json({ ok: true, found: true, path: data.path, contacts: data.contacts });
+  const contacts = (data.contacts ?? []).map((contact: { sent?: boolean; submitted?: boolean; [key: string]: unknown }) => ({
+    ...contact,
+    submitted: contact.submitted ?? contact.sent ?? false,
+  }));
+  return Response.json({ ok: true, found: true, path: data.path, contacts, foregroundRestored: data.foregroundRestored ?? null });
 }

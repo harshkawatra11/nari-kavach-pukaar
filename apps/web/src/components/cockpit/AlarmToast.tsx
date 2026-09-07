@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 export interface AlarmContactResult {
   name: string;
   phone: string;
-  sent: boolean;
+  submitted: boolean;
   error?: string;
 }
 
@@ -20,11 +20,13 @@ export function AlarmToast({
   path,
   contacts,
   trackUrl,
+  foregroundRestored,
 }: {
   visible: boolean;
   path: string | null;
   contacts: AlarmContactResult[];
   trackUrl: string | null;
+  foregroundRestored: boolean | null;
 }) {
   return (
     <AnimatePresence>
@@ -47,11 +49,14 @@ export function AlarmToast({
                 <ul className="mt-1.5 flex flex-col gap-0.5">
                   {contacts.map((c) => (
                     <li key={c.phone} className="text-[length:var(--text-sm)] text-ink-soft">
-                      {c.name}: {c.sent ? "submitted to WhatsApp" : `failed (${c.error ?? "unknown error"})`}
+                      {c.name}: {c.submitted ? "submitted to WhatsApp" : `failed (${c.error ?? "unknown error"})`}
                     </li>
                   ))}
                   {contacts.length === 0 && <li className="text-[length:var(--text-sm)] text-ink-faint">Dispatching&hellip;</li>}
                 </ul>
+                {foregroundRestored === false && (
+                  <p className="mt-2 text-[length:var(--text-sm)] text-alarm">Return to Pukaar manually.</p>
+                )}
                 {trackUrl && (
                   <Button
                     variant="secondary"

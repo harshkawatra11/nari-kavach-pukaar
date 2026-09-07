@@ -6,6 +6,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { Button } from "@/components/ui/button";
 import { Sparkline } from "./Sparkline";
 import { cn } from "@/lib/utils";
+import type { LocationStatus } from "@pukaar/core";
 
 const TARGET_MS = 1200;
 
@@ -25,12 +26,16 @@ export function Inspector({
   path1State,
   path2State,
   trackUrl,
+  location,
+  accuracyM,
   onKillRelay,
 }: {
   lastTurnMs: number | null;
   path1State: "idle" | "armed" | "fired";
   path2State: "idle" | "armed" | "fired" | "unavailable";
   trackUrl: string | null;
+  location: { capturedAt: number | null; ageMs: number | null; status: LocationStatus };
+  accuracyM: number | null;
   onKillRelay: () => void;
 }) {
   const [history, setHistory] = useState<number[]>([]);
@@ -93,7 +98,7 @@ export function Inspector({
           <div className="mt-2 flex flex-col gap-1">
             <div className="flex justify-between text-[length:var(--text-sm)]">
               <span className="text-ink-faint">Last</span>
-              <span className="font-mono text-ink">{lastTurnMs !== null ? `${lastTurnMs}ms` : "—"}</span>
+              <span className="font-mono text-ink">{lastTurnMs !== null ? `${lastTurnMs}ms` : "Not measured"}</span>
             </div>
             <div className="flex justify-between text-[length:var(--text-sm)]">
               <span className="text-ink-faint">Target</span>
@@ -111,6 +116,15 @@ export function Inspector({
         <div className="border-t border-hairline pt-4">
           <p className="section-label mb-2">Session</p>
           <p className="text-[length:var(--text-sm)] text-ink-soft">Contacts configured at setup</p>
+          <div className="mt-3 flex items-center justify-between text-[length:var(--text-sm)]">
+            <span className="text-ink-faint">Location</span>
+            <span className="font-mono uppercase text-ink">{location.status}</span>
+          </div>
+          {location.capturedAt && (
+            <p className="mt-1 text-[length:var(--text-2xs)] text-ink-faint">
+              Updated {Math.floor((location.ageMs ?? 0) / 1000)}s ago{accuracyM !== null ? ` · ±${Math.round(accuracyM)}m` : ""}
+            </p>
+          )}
           {trackUrl && (
             <Button variant="quiet" size="sm" className="mt-1 px-0" onClick={() => window.open(trackUrl, "_blank", "noopener,noreferrer")}>
               Open contact view

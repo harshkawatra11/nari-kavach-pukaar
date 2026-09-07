@@ -1,3 +1,5 @@
+import { validatePublicTrackingOrigin } from "@pukaar/core";
+
 // Single place process.env is read on the server side of the web app. Throws
 // a typed error naming the missing variable and the file to add it to.
 
@@ -32,5 +34,7 @@ export const env = {
     return required("RELAY_SHARED_SECRET");
   },
   WA_BRIDGE_URL: optional("WA_BRIDGE_URL", "http://127.0.0.1:8790"),
-  PUBLIC_ORIGIN: optional("NEXT_PUBLIC_PUBLIC_ORIGIN", "http://localhost:3000"),
+  get PUBLIC_TRACKING_ORIGIN() {
+    return validatePublicTrackingOrigin(required("PUBLIC_TRACKING_ORIGIN"));
+  },
 };

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import type { GeoPoint } from "@pukaar/core";
 import { mapsLink } from "@pukaar/core";
+import { locationFreshness } from "@pukaar/core";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -17,6 +18,7 @@ function agoLabel(at: number): string {
 export function LiveMap({ trail, alarm, userName }: { trail: GeoPoint[]; alarm: { raised: boolean; at: number | null }; userName: string }) {
   const [, forceTick] = useState(0);
   const point = trail.at(-1) ?? null;
+  const freshness = locationFreshness(point);
 
   useEffect(() => {
     const id = setInterval(() => forceTick((n) => n + 1), 5000);
@@ -48,7 +50,9 @@ export function LiveMap({ trail, alarm, userName }: { trail: GeoPoint[]; alarm: 
       {point && (
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[length:var(--text-base)] text-ink-soft">Last known position, updated {agoLabel(point.at)}</p>
+            <p className="text-[length:var(--text-base)] text-ink-soft">
+              {freshness.status === "live" ? "Live position" : "Last known position"}, updated {agoLabel(point.at)}
+            </p>
             <p className="mt-1 font-mono text-[length:var(--text-xs)] text-ink-faint">
               {point.lat.toFixed(5)}, {point.lng.toFixed(5)} &middot; &plusmn;{Math.round(point.accuracyM)}m
             </p>

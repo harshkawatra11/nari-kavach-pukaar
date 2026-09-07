@@ -1,5 +1,6 @@
 import type { Contact, Lang } from "@pukaar/core";
 import { createSession } from "@/lib/firestore/sessions";
+import { env } from "@/lib/env";
 
 interface CreateSessionBody {
   contacts: Contact[];
@@ -27,5 +28,5 @@ export async function POST(req: Request) {
     testMode: body.testMode === true,
   });
 
-  return Response.json({ ok: true, sessionId, trackToken });
+  return Response.json({ ok: true, sessionId, trackToken, trackUrl: `${env.PUBLIC_TRACKING_ORIGIN}/t/${trackToken}` });
 }

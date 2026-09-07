@@ -3,28 +3,39 @@ import { env } from "@/lib/env";
 export interface WaAlertResult {
   name: string;
   phone: string;
-  sent: boolean;
+  submitted: boolean;
   error?: string;
 }
 
-/** Posts one alert to the local WhatsApp bridge. Never throws: a bridge
- *  failure (bridge not running, WhatsApp not signed in) must not fail the
- *  overall alarm request, since the Firestore write and the live map SSE
- *  stream have already delivered the alert by the time this runs. */
-export async function sendWhatsAppAlert(opts: { name: string; phone: string; message: string }): Promise<WaAlertResult> {
+export interface WaBatchResult {
+  contacts: WaAlertResult[];
+  foregroundRestored: boolean;
+}
+
+/** Sends every recipient through one serialized desktop operation so
+ * WhatsApp comes forward once and Pukaar is restored once after the batch. */
+export async function sendWhatsAppAlerts(opts: {
+  contacts: Array<{ name: string; phone: string }>;
+  message: string;
+  returnDelayMs?: number;
+}): Promise<WaBatchResult> {
   try {
-    const res = await fetch(`${env.WA_BRIDGE_URL}/alert`, {
+    const res = await fetch(`${env.WA_BRIDGE_URL}/alerts`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ phone: opts.phone, message: opts.message }),
-      signal: AbortSignal.timeout(25000),
+      body: JSON.stringify({ contacts: opts.contacts, message: opts.message, returnDelayMs: opts.returnDelayMs ?? 2000 }),
+      signal: AbortSignal.timeout(60000),
     });
-    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
-    if (!res.ok || !data.ok) {
-      return { name: opts.name, phone: opts.phone, sent: false, error: data.error ?? `bridge returned ${res.status}` };
+    const data = (await res.json().catch(() => ({}))) as Partial<WaBatchResult> & { error?: string };
+    if (!Array.isArray(data.contacts)) {
+      return {
+        contacts: opts.contacts.map((contact) => ({ ...contact, submitted: false, error: data.error ?? `bridge returned ${res.status}` })),
+        foregroundRestored: false,
+      };
     }
-    return { name: opts.name, phone: opts.phone, sent: true };
+    return { contacts: data.contacts, foregroundRestored: data.foregroundRestored === true };
   } catch (err) {
-    return { name: opts.name, phone: opts.phone, sent: false, error: String(err instanceof Error ? err.message : err) };
+    const error = String(err instanceof Error ? err.message : err);
+    return { contacts: opts.contacts.map((contact) => ({ ...contact, submitted: false, error })), foregroundRestored: false };
   }
 }

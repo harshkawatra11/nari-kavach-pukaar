@@ -1,4 +1,4 @@
-import { mapsLink } from "./geo";
+import { locationFreshness, mapsLink } from "./geo";
 import type { GeoPoint } from "./types";
 
 /** The WhatsApp alert body. Kept plain: no emoji, no markdown, because the
@@ -14,9 +14,9 @@ export function buildAlertMessage(opts: {
   const lines = opts.testMode ? ["PUKAAR TEST: No emergency."] : [];
   lines.push(`Pukaar alert. ${opts.userName} said her safe word at ${opts.timeHHMM}.`);
   if (opts.point) {
-    lines.push(`Live location: ${mapsLink(opts.point)}`);
+    const freshness = locationFreshness(opts.point);
+    lines.push("", `${freshness.status === "live" ? "Current" : "Last known"} location:`, mapsLink(opts.point));
   }
-  lines.push(`Follow her here: ${opts.trackUrl}`);
-  lines.push("This was sent automatically. Call her now.");
+  lines.push("", "Live tracking:", opts.trackUrl, "", "This was sent automatically. Call her now.");
   return lines.join("\n");
 }

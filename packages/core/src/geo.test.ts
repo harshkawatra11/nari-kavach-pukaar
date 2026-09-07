@@ -43,6 +43,6 @@ describe("shouldPersistPing", () => {
 
 describe("mapsLink", () => {
   it("builds a google maps query link", () => {
-    expect(mapsLink(DU)).toBe("https://maps.google.com/?q=28.6879,77.2107");
+    expect(mapsLink(DU)).toBe("https://www.google.com/maps/search/?api=1&query=28.6879%2C77.2107");
   });
 });

@@ -6,10 +6,18 @@ import type { GeoPoint } from "@pukaar/core";
 /** watchPosition + POST to /api/session/:id/location. geolocation needs a
  *  secure context: http://localhost qualifies, a LAN IP does not, and both
  *  fail silently rather than throwing, so this is demoed on localhost. */
-export function useGeoTrail(sessionId: string, enabled: boolean) {
-  const [lastPoint, setLastPoint] = useState<GeoPoint | null>(null);
+export function useGeoTrail(sessionId: string, enabled: boolean, initialPoint: GeoPoint | null = null) {
+  const [lastPoint, setLastPoint] = useState<GeoPoint | null>(initialPoint);
   const [available, setAvailable] = useState(true);
   const watchIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!initialPoint) return;
+    // The setup page obtains this browser-only value after creating the
+    // session, so it arrives after the call page's first render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLastPoint(initialPoint);
+  }, [initialPoint]);
 
   useEffect(() => {
     if (!enabled) return;

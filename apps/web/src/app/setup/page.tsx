@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Contact, Lang } from "@pukaar/core";
+import type { Contact, GeoPoint, Lang } from "@pukaar/core";
 import { AppBar } from "@/components/shell/AppBar";
 import { SettingsGroup, SettingsRow } from "@/components/ui/settings-group";
 import { ContactForm } from "@/components/setup/ContactForm";
@@ -17,7 +17,18 @@ export default function SetupPage() {
   const [duressPhrase, setDuressPhrase] = useState("Mummy ko bol dena, blue notebook kitchen mein hai.");
   const [language, setLanguage] = useState<Lang>("auto");
   const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [submitStage, setSubmitStage] = useState<"idle" | "creating" | "locating" | "opening">("idle");
+
+  function getInitialLocation(): Promise<GeoPoint | null> {
+    if (!("geolocation" in navigator)) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracyM: pos.coords.accuracy, at: Date.now() }),
+        () => resolve(null),
+        { enableHighAccuracy: true, maximumAge: 15000, timeout: 8000 },
+      );
+    });
+  }
 
   async function handleStart() {
     setError(null);
@@ -31,7 +42,7 @@ export default function SetupPage() {
       return;
     }
 
-    setSubmitting(true);
+    setSubmitStage("creating");
     try {
       const res = await fetch("/api/session", {
         method: "POST",
@@ -49,13 +60,27 @@ export default function SetupPage() {
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error ?? "failed to create session");
+      setSubmitStage("locating");
+      const initialPoint = await getInitialLocation();
+      if (initialPoint) {
+        await fetch(`/api/session/${data.sessionId}/location`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(initialPoint),
+        }).catch(() => undefined);
+        sessionStorage.setItem("pukaar.initialLocation", JSON.stringify(initialPoint));
+      } else {
+        sessionStorage.removeItem("pukaar.initialLocation");
+      }
       sessionStorage.setItem("pukaar.userName", userName || "she");
       sessionStorage.setItem("pukaar.duressPhrase", duressPhrase);
       sessionStorage.setItem("pukaar.language", language);
+      sessionStorage.setItem("pukaar.trackUrl", data.trackUrl);
+      setSubmitStage("opening");
       router.push(`/call?sessionId=${data.sessionId}&trackToken=${data.trackToken}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
-      setSubmitting(false);
+      setSubmitStage("idle");
     }
   }
 
@@ -105,8 +130,8 @@ export default function SetupPage() {
                 {error}
               </p>
             )}
-            <Button className="ml-auto" onClick={handleStart} disabled={submitting}>
-              {submitting ? "Starting" : "Start call"}
+            <Button className="ml-auto" onClick={handleStart} disabled={submitStage !== "idle"}>
+              {submitStage === "creating" ? "Creating session" : submitStage === "locating" ? "Securing location" : submitStage === "opening" ? "Opening call" : "Start call"}
             </Button>
           </div>
         </div>

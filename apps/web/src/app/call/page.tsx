@@ -12,18 +12,20 @@ import { AlarmToast, type AlarmContactResult } from "@/components/cockpit/AlarmT
 import { useVoiceSession } from "@/hooks/useVoiceSession";
 import { useLocalDuressSpotter } from "@/hooks/useLocalDuressSpotter";
 import { useGeoTrail } from "@/hooks/useGeoTrail";
+import { locationFreshness, type GeoPoint } from "@pukaar/core";
 
 function CallScreen() {
   const params = useSearchParams();
   const router = useRouter();
   const sessionId = params.get("sessionId") ?? "";
-  const trackToken = params.get("trackToken") ?? "";
 
   const [started, setStarted] = useState(false);
   const [coverMode, setCoverMode] = useState(false);
   const [alarmVisible, setAlarmVisible] = useState(false);
   const [alarmPath, setAlarmPath] = useState<string | null>(null);
   const [alarmContacts, setAlarmContacts] = useState<AlarmContactResult[]>([]);
+  const [foregroundRestored, setForegroundRestored] = useState<boolean | null>(null);
+  const [, setLocationClock] = useState(0);
 
   // sessionStorage does not exist during SSR. Reading it inline during
   // render (typeof window !== "undefined" ? ... : fallback) makes the
@@ -33,18 +35,29 @@ function CallScreen() {
   // once the Inspector's conditional "Open contact view" button made the
   // mismatch visible in the DOM tree shape. Reading these once in an effect
   // and holding them in state is the correct fix, not a suppression.
-  const [origin, setOrigin] = useState<string | null>(null);
-  const [session, setSession] = useState({ userName: "she", duressPhrase: "", language: "auto" as "hi-IN" | "en-IN" | "auto" });
+  const [session, setSession] = useState({
+    userName: "she",
+    duressPhrase: "",
+    language: "auto" as "hi-IN" | "en-IN" | "auto",
+    initialLocation: null as GeoPoint | null,
+    trackUrl: null as string | null,
+  });
 
   useEffect(() => {
-    // Runs once on mount to read window/sessionStorage, which don't exist
+    // Runs once on mount to read sessionStorage, which does not exist
     // during SSR; not a lazy useState initializer for the same reason.
+    let initialLocation: GeoPoint | null = null;
+    try {
+      const raw = sessionStorage.getItem("pukaar.initialLocation");
+      if (raw) initialLocation = JSON.parse(raw) as GeoPoint;
+    } catch {}
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOrigin(window.location.origin);
     setSession({
       userName: sessionStorage.getItem("pukaar.userName") ?? "she",
       duressPhrase: sessionStorage.getItem("pukaar.duressPhrase") ?? "",
       language: (sessionStorage.getItem("pukaar.language") as "hi-IN" | "en-IN" | "auto" | null) ?? "auto",
+      initialLocation,
+      trackUrl: sessionStorage.getItem("pukaar.trackUrl"),
     });
   }, []);
 
@@ -71,7 +84,15 @@ function CallScreen() {
     },
   });
 
-  useGeoTrail(sessionId, started);
+  const geo = useGeoTrail(sessionId, started, session.initialLocation);
+
+  useEffect(() => {
+    if (!started) return;
+    const id = window.setInterval(() => setLocationClock((n) => n + 1), 5000);
+    return () => window.clearInterval(id);
+  }, [started]);
+
+  const location = locationFreshness(geo.lastPoint);
 
   useEffect(() => {
     if (!alarmVisible || !sessionId) return;
@@ -89,6 +110,7 @@ function CallScreen() {
         if (data.found && !cancelled) {
           setAlarmContacts(data.contacts ?? []);
           setAlarmPath(data.path ?? null);
+          setForegroundRestored(data.foregroundRestored ?? null);
           return;
         }
       } catch {
@@ -111,7 +133,7 @@ function CallScreen() {
     window.dispatchEvent(new Event("pukaar:kill-relay"));
   }
 
-  const trackUrl = trackToken && origin ? `${origin}/t/${trackToken}` : null;
+  const trackUrl = session.trackUrl;
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -143,10 +165,12 @@ function CallScreen() {
         path1State={state.alarmFired && alarmPath === "server-tool" ? "fired" : started ? "armed" : "idle"}
         path2State={!spotter.available ? "unavailable" : spotter.fired ? "fired" : started ? "armed" : "idle"}
         trackUrl={trackUrl}
+        location={location}
+        accuracyM={geo.lastPoint?.accuracyM ?? null}
         onKillRelay={handleKillRelay}
       />
 
-      <AlarmToast visible={alarmVisible} path={alarmPath} contacts={alarmContacts} trackUrl={trackUrl} />
+      <AlarmToast visible={alarmVisible} path={alarmPath} contacts={alarmContacts} trackUrl={trackUrl} foregroundRestored={foregroundRestored} />
       <CoverMode visible={coverMode} onExit={() => setCoverMode(false)} />
     </div>
   );
