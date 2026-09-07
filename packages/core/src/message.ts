@@ -9,10 +9,10 @@ export function buildAlertMessage(opts: {
   timeHHMM: string;
   point: GeoPoint | null;
   trackUrl: string;
+  testMode?: boolean;
 }): string {
-  const lines = [
-    `Pukaar alert. ${opts.userName} said her safe word at ${opts.timeHHMM}.`,
-  ];
+  const lines = opts.testMode ? ["PUKAAR TEST: No emergency."] : [];
+  lines.push(`Pukaar alert. ${opts.userName} said her safe word at ${opts.timeHHMM}.`);
   if (opts.point) {
     lines.push(`Live location: ${mapsLink(opts.point)}`);
   }

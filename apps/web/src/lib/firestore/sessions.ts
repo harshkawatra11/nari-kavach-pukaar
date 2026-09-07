@@ -16,6 +16,7 @@ export async function createSession(input: {
   duressPhrase: string;
   language: Lang;
   userName: string;
+  testMode?: boolean;
 }): Promise<{ sessionId: string; trackToken: string }> {
   const db = getDb();
   const ref = db.collection(SESSIONS).doc();
@@ -29,6 +30,7 @@ export async function createSession(input: {
     language: input.language,
     duressPhrase: input.duressPhrase,
     userName: input.userName,
+    testMode: input.testMode ?? false,
     contacts: input.contacts,
     status: "active",
     alarm: { raised: false, at: null, path: null, reason: null },

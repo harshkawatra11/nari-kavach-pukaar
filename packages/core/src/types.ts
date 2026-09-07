@@ -24,6 +24,9 @@ export interface SessionDoc {
   language: Lang;
   duressPhrase: string;
   userName: string;
+  /** Marks an approved delivery check so recipients never mistake a stage
+   * rehearsal for a real emergency. */
+  testMode?: boolean;
   contacts: Contact[];
   status: "active" | "ended";
   alarm: AlarmState;

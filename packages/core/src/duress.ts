@@ -28,7 +28,10 @@ const FILLERS = new Set([
 export function normalize(s: string): string {
   return s
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    // Keep combining marks as well as letters. Devanagari vowel signs are
+    // Unicode marks, so stripping \p{M} silently changed Hindi words before
+    // comparison and made a correctly transcribed phrase less likely to fire.
+    .replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ")
     .split(/\s+/)
     .filter((t) => t.length > 0 && !FILLERS.has(t))
     .join(" ");

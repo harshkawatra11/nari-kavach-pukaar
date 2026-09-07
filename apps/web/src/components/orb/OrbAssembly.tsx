@@ -1,141 +1,80 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { Environment } from "@react-three/drei";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
-import * as THREE from "three";
-import gsap from "gsap";
+import { OrbScene } from "./OrbScene";
 
-type FragmentSeed = {
-  start: THREE.Vector3;
-  end: THREE.Vector3;
-  rotation: THREE.Euler;
-  color: string;
-  delay: number;
-};
+const TRACES = [
+  { x: "9vw", y: "18vh", dx: -16, dy: -8, color: "#ff9add", size: 3 },
+  { x: "22vw", y: "76vh", dx: -9, dy: 13, color: "#ffffff", size: 2 },
+  { x: "38vw", y: "10vh", dx: -5, dy: -14, color: "#8eeaff", size: 2 },
+  { x: "76vw", y: "14vh", dx: 12, dy: -12, color: "#ffffff", size: 3 },
+  { x: "91vw", y: "48vh", dx: 18, dy: 2, color: "#ff9add", size: 2 },
+  { x: "81vw", y: "84vh", dx: 14, dy: 14, color: "#8eeaff", size: 3 },
+  { x: "53vw", y: "91vh", dx: 2, dy: 18, color: "#ffffff", size: 2 },
+  { x: "5vw", y: "58vh", dx: -18, dy: 5, color: "#8eeaff", size: 2 },
+] as const;
 
-function seeded(index: number, salt: number) {
-  return ((Math.sin(index * 91.73 + salt * 37.17) + 1) / 2);
-}
-
-function Assembly({ onComplete }: { onComplete: () => void }) {
-  const group = useRef<THREE.Group>(null);
-  const progress = useRef({ value: 0 });
-  const finished = useRef(false);
-  const seeds = useMemo<FragmentSeed[]>(() => {
-    return Array.from({ length: 24 }, (_, index) => {
-      const angle = (index / 24) * Math.PI * 2;
-      const latitude = ((index % 4) - 1.5) * 0.48;
-      const radius = Math.sqrt(Math.max(0.1, 1 - latitude * latitude));
-      const end = new THREE.Vector3(Math.cos(angle) * radius, latitude, Math.sin(angle) * radius).multiplyScalar(1.22);
-      const start = new THREE.Vector3(
-        (seeded(index, 1) - 0.5) * 10,
-        (seeded(index, 2) - 0.5) * 6,
-        (seeded(index, 3) - 0.5) * 5 - 1,
-      );
-      return {
-        start,
-        end,
-        rotation: new THREE.Euler(seeded(index, 4) * Math.PI, seeded(index, 5) * Math.PI, seeded(index, 6) * Math.PI),
-        color: index % 3 === 0 ? "#65eaff" : index % 2 === 0 ? "#f6d9ff" : "#ff6fcf",
-        delay: seeded(index, 7) * 0.22,
-      };
-    });
-  }, []);
-
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.to(progress.current, {
-        value: 1,
-        duration: 1.85,
-        delay: 0.15,
-        ease: "power3.inOut",
-        onComplete: () => {
-          if (!finished.current) {
-            finished.current = true;
-            onComplete();
-          }
-        },
-      });
-    });
-    const fallback = window.setTimeout(() => {
-      if (!finished.current) {
-        finished.current = true;
-        onComplete();
-      }
-    }, 3000);
-    return () => {
-      window.clearTimeout(fallback);
-      ctx.revert();
-    };
-  }, [onComplete]);
-
-  useFrame((state, delta) => {
-    if (!group.current) return;
-    group.current.rotation.y += delta * 0.09;
-    group.current.children.forEach((child, index) => {
-      const seed = seeds[index];
-      const local = THREE.MathUtils.clamp((progress.current.value - seed.delay) / (1 - seed.delay), 0, 1);
-      const eased = 1 - Math.pow(1 - local, 4);
-      child.position.lerpVectors(seed.start, seed.end, eased);
-      child.rotation.x = THREE.MathUtils.lerp(seed.rotation.x, seed.end.y * 0.3, eased);
-      child.rotation.y = THREE.MathUtils.lerp(seed.rotation.y, Math.atan2(seed.end.x, seed.end.z), eased);
-      child.rotation.z = THREE.MathUtils.lerp(seed.rotation.z, 0, eased);
-      const material = (child as THREE.Mesh).material as THREE.MeshPhysicalMaterial;
-      material.opacity = THREE.MathUtils.lerp(0.05, local > 0.86 ? 0.12 : 0.48, eased);
-      const pulse = 1 + Math.sin(state.clock.elapsedTime * 2.2 + index) * 0.025 * (1 - eased);
-      child.scale.setScalar(pulse);
-    });
-  });
-
-  return (
-    <group ref={group}>
-      {seeds.map((seed, index) => (
-        <mesh key={index} position={seed.start} rotation={seed.rotation}>
-          <sphereGeometry args={[1.23, 16, 8, (index % 6) * (Math.PI / 3), Math.PI / 3.6, Math.floor(index / 6) * (Math.PI / 4), Math.PI / 4.5]} />
-          <meshPhysicalMaterial
-            color={seed.color}
-            transparent
-            opacity={0.05}
-            transmission={0.72}
-            roughness={0.16}
-            metalness={0}
-            ior={1.4}
-            thickness={0.45}
-            clearcoat={1}
-            depthWrite={false}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
+/** A restrained first-load reveal. The same OrbScene used by the resting
+ * home screen appears at the same visual position, so the final frame does
+ * not swap from one 3D construction to another. Eight fine light traces
+ * establish assembly without turning the launch into a particle demo. */
 export function OrbAssembly({ onComplete, onSkip }: { onComplete: () => void; onSkip: () => void }) {
+  useEffect(() => {
+    const timer = window.setTimeout(onComplete, 1900);
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onSkip();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("keydown", handleKey);
+    };
+  }, [onComplete, onSkip]);
+
   return (
     <motion.div
-      className="fixed inset-0 z-[100] bg-ground"
+      className="fixed inset-0 z-[100] overflow-hidden bg-ground"
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
-      aria-label="Pukaar is assembling"
+      transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+      aria-label="Pukaar is readying the call"
     >
-      <Canvas dpr={[1, 1.5]} camera={{ position: [0, 0, 5.1], fov: 42 }} gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}>
-        <ambientLight intensity={0.55} />
-        <directionalLight position={[3, 4, 3]} intensity={1.2} />
-        <directionalLight position={[-3, -2, 2]} intensity={0.45} color="#65eaff" />
-        <Assembly onComplete={onComplete} />
-        <Environment preset="studio" background={false} />
-      </Canvas>
-      <button
-        type="button"
-        onClick={onSkip}
-        className="absolute bottom-7 right-7 rounded-[var(--radius-sm)] border border-hairline bg-surface-1/80 px-3 py-2 text-[length:var(--text-xs)] text-ink-faint backdrop-blur-md transition-colors hover:text-ink focus-visible:text-ink"
+      {TRACES.map((trace, index) => (
+        <motion.span
+          key={`${trace.x}-${trace.y}`}
+          aria-hidden
+          className="absolute rounded-full"
+          style={{ left: trace.x, top: trace.y, width: trace.size, height: trace.size, background: trace.color, boxShadow: `0 0 14px ${trace.color}` }}
+          initial={{ opacity: 0, scale: 0.4, x: trace.dx, y: trace.dy }}
+          animate={{ left: "50vw", top: "32vh", opacity: [0, 0.62, 0], scale: [0.4, 1, 0.2], x: 0, y: 0 }}
+          transition={{ duration: 1.2, delay: 0.08 + index * 0.035, ease: [0.32, 0, 0.2, 1] }}
+        />
+      ))}
+
+      <motion.div
+        className="absolute left-1/2 top-[32%] h-[260px] w-[260px] -translate-x-1/2 -translate-y-1/2"
+        initial={{ opacity: 0, scale: 0.72, filter: "blur(14px)" }}
+        animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+        transition={{ duration: 1.28, delay: 0.28, ease: [0.16, 1, 0.3, 1] }}
       >
-        Skip animation
-      </button>
+        <motion.div
+          className="absolute inset-[-18%] rounded-full bg-[radial-gradient(circle,rgba(255,111,207,0.12),transparent_68%)] blur-2xl"
+          initial={{ opacity: 0, scale: 0.7 }}
+          animate={{ opacity: [0, 0.65, 0.22], scale: [0.7, 1.08, 1] }}
+          transition={{ duration: 1.55, delay: 0.22, ease: "easeOut" }}
+        />
+        <OrbScene reducedMotion={false} orbScale={0.8125} />
+      </motion.div>
+
+      <motion.p
+        className="absolute left-1/2 top-[53%] -translate-x-1/2 text-[length:var(--text-2xs)] font-medium tracking-[0.18em] text-ink-faint"
+        initial={{ opacity: 0, y: 5 }}
+        animate={{ opacity: [0, 0.55, 0], y: 0 }}
+        transition={{ duration: 1.35, delay: 0.45, ease: "easeOut" }}
+      >
+        LINE READY
+      </motion.p>
     </motion.div>
   );
 }

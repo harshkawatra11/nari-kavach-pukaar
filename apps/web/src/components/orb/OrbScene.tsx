@@ -2,15 +2,14 @@
 
 import type { RefObject } from "react";
 import { Canvas } from "@react-three/fiber";
-import { ContactShadows, Environment } from "@react-three/drei";
+import { ContactShadows, Environment, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
 import { Orb } from "./Orb";
 
 /** The R3F canvas. DPR capped at 1.75. A real MeshPhysicalMaterial glass
  *  shell (see Orb.tsx) needs an actual PMREM environment to refract and
- *  reflect, which is what makes it read as glass rather than a flat tinted
- *  sphere; "studio" is drei's softest built-in preset, closer to the soft
- *  even lighting a physical glass render actually wants than an outdoor HDRI.
+ *  reflect. Hand-placed Lightformers create the long, curved pink, cyan and
+ *  white reflections seen in a controlled product-photography studio.
  *  Postprocessing bloom was tried via @react-three/postprocessing and
  *  dropped: EffectComposer in this version stack composites its final pass
  *  without preserving destination alpha, which reliably filled the whole
@@ -29,7 +28,7 @@ export function OrbScene({
   return (
     <Canvas
       dpr={[1, 1.75]}
-      camera={{ position: [0, 0, 4.2], fov: 40 }}
+      camera={{ position: [0, 0, 4], fov: 34 }}
       gl={{
         antialias: true,
         alpha: true,
@@ -39,11 +38,7 @@ export function OrbScene({
       }}
       style={{ position: "absolute", inset: 0, background: "transparent" }}
     >
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[3, 4, 2]} intensity={0.9} />
-      <directionalLight position={[-3, -1, 2]} intensity={0.4} color="#7C4FE0" />
-      <pointLight position={[-2.2, 1.4, 2.6]} intensity={7} distance={7} color="#ff4fca" />
-      <pointLight position={[2.1, -1.5, 2.2]} intensity={5} distance={7} color="#53dcff" />
+      <ambientLight intensity={0.18} />
       <Orb reducedMotion={reducedMotion} scale={orbScale} pointer={pointer} />
       {!reducedMotion && (
         <>
@@ -58,7 +53,12 @@ export function OrbScene({
               the scene background, filling the whole canvas as an opaque
               square. This should only ever contribute lighting/reflections
               and refraction content for the glass shell's transmission. */}
-          <Environment preset="studio" environmentIntensity={1} background={false} />
+          <Environment resolution={256} background={false} environmentIntensity={1}>
+            <Lightformer form="rect" intensity={4.5} color="#ffffff" position={[-3.2, 2.1, 3]} rotation={[0, 0.45, 0.18]} scale={[1.1, 3.8, 1]} />
+            <Lightformer form="rect" intensity={2.8} color="#ff9add" position={[3.4, 0.9, 2]} rotation={[0, -0.65, -0.12]} scale={[0.7, 2.8, 1]} />
+            <Lightformer form="rect" intensity={2.4} color="#88ecff" position={[-1.8, -3, 1.5]} rotation={[0.35, 0.15, 0]} scale={[2.4, 0.55, 1]} />
+            <Lightformer form="ring" intensity={1.25} color="#b987ff" position={[0, 0, -4]} scale={5} />
+          </Environment>
         </>
       )}
     </Canvas>

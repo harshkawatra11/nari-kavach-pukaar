@@ -3,7 +3,6 @@ import type WebSocket from "ws";
 import {
   containsForbiddenWord,
   detectDuress,
-  FILLER_LINES,
   NEUTRAL_FALLBACK_LINES,
   splitSentences,
   systemPrompt,
@@ -33,7 +32,6 @@ export class Session {
   private duressPhrase = "";
   private userName: string | undefined;
   private history: ChatMessage[] = [];
-  private fillerAudio: { wavBase64: string; sampleRateHz: number }[] = [];
   private alarmRaised = false;
   private disposed = false;
   private sttHandle: SttSocketHandle | null = null;
@@ -78,24 +76,15 @@ export class Session {
       this.openStt();
     }
 
-    // Pre-synthesise filler lines so there is never dead air while the model thinks.
-    void this.preloadFillers();
-
     send(this.ws, { t: "ready", sttMode: this.sttMode, ttsMode: env.TTS_MODE });
 
-    // Open the call with a voice, not silence.
-    await this.speakTurn("Haan bol, kahan hai tu abhi?", randomUUID());
-  }
-
-  private async preloadFillers() {
-    try {
-      const results = await Promise.all(
-        FILLER_LINES.map((line) => synthesizeRest({ apiKey: env.SARVAM_API_KEY, text: line, speaker: env.SARVAM_SPEAKER, language: this.language })),
-      );
-      this.fillerAudio = results;
-    } catch (err) {
-      log.warn("failed to preload filler lines", { err: String(err) });
-    }
+    // Open in the same casual Hinglish register used in the live demo. Send
+    // the text frame as well as audio so the cockpit never starts with an
+    // unexplained voice that is missing from the transcript.
+    const openingTurnId = randomUUID();
+    const opening = "Hey, kya scene hai? Main line pe hoon, bata.";
+    send(this.ws, { t: "reply", text: opening, turnId: openingTurnId });
+    await this.speakTurn(opening, openingTurnId);
   }
 
   private openStt() {
@@ -180,12 +169,6 @@ export class Session {
   }
 
   private async handleTurn(turnId: string, finalAt: number) {
-    // Immediately play a filler so there is no dead air while the model thinks.
-    const filler = this.fillerAudio[Math.floor(Math.random() * Math.max(1, this.fillerAudio.length))];
-    if (filler) {
-      send(this.ws, { t: "audio", b64: filler.wavBase64, mime: "audio/wav", sampleRateHz: filler.sampleRateHz, turnId, seq: -1 });
-    }
-
     try {
       let result = await chatCompletion({ apiKey: env.SARVAM_API_KEY, messages: this.history });
 

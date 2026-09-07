@@ -25,4 +25,15 @@ describe("buildAlertMessage", () => {
     expect(msg).not.toContain("maps.google.com");
     expect(msg).toContain("Follow her here");
   });
+
+  it("labels a delivery rehearsal before any emergency wording", () => {
+    const msg = buildAlertMessage({
+      userName: "Harsh",
+      timeHHMM: "21:04",
+      point: null,
+      trackUrl: "http://localhost:3000/t/abc123",
+      testMode: true,
+    });
+    expect(msg.startsWith("PUKAAR TEST: No emergency.")).toBe(true);
+  });
 });

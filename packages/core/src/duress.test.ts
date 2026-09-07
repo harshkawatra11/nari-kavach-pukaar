@@ -60,6 +60,18 @@ describe("detectDuress - true positives", () => {
     );
     expect(r.matched).toBe(true);
   });
+
+  it("matches the locked Hinglish demo phrase inside natural speech", () => {
+    const phrase = "Mummy ko bol dena, blue notebook kitchen mein hai.";
+    const r = detectDuress("accha sun mummy ko bol dena blue notebook kitchen mein hai theek hai", phrase);
+    expect(r.matched).toBe(true);
+  });
+
+  it("preserves Devanagari vowel marks during matching", () => {
+    const phrase = "मम्मी को बोल देना नीली कॉपी रसोई में है";
+    expect(normalize(phrase)).toContain("नीली");
+    expect(detectDuress(phrase, phrase).matched).toBe(true);
+  });
 });
 
 describe("detectDuress - hard negatives, genuinely different sentences that must never fire", () => {

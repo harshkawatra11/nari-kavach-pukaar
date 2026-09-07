@@ -81,7 +81,15 @@ export function useVoiceSession(opts: {
     const relayUrl = process.env.NEXT_PUBLIC_RELAY_URL ?? "ws://localhost:8787";
     const ws = new WebSocket(relayUrl);
     wsRef.current = ws;
-    playbackRef.current = new AudioPlaybackQueue();
+    playbackRef.current = new AudioPlaybackQueue(() => {
+      // A short grace period prevents a sentence boundary from flashing the
+      // orb back to listening while the next synthesised chunk is arriving.
+      if (speakingIdleTimerRef.current) clearTimeout(speakingIdleTimerRef.current);
+      speakingIdleTimerRef.current = setTimeout(() => {
+        setPhase("listening");
+        setState((s) => ({ ...s, micActive: { ...s.micActive, voice: false } }));
+      }, 220);
+    });
     orbAudio.ttsAnalyser = playbackRef.current.analyser;
     orbAudio.phase = "idle";
 
@@ -125,13 +133,7 @@ export function useVoiceSession(opts: {
           break;
         case "audio":
           setPhase("speaking");
-          // No explicit "done speaking" event exists on the wire; the relay
-          // streams sentence chunks as they finish synthesising, so there is
-          // no fixed count to wait for. Debounce back to listening once no
-          // new chunk has arrived for a beat, on the assumption that a real
-          // gap this size means Pukaar has finished the turn.
           if (speakingIdleTimerRef.current) clearTimeout(speakingIdleTimerRef.current);
-          speakingIdleTimerRef.current = setTimeout(() => setPhase("listening"), 1400);
           if (frame.seq >= 0) {
             void playbackRef.current?.enqueueWavBase64(frame.b64);
             const mark = clockRef.current.markFirstAudio(frame.turnId, Date.now());
@@ -140,7 +142,7 @@ export function useVoiceSession(opts: {
                 ...s,
                 lastTurnMs: mark.timeToFirstWordMs,
                 medianTurnMs: clockRef.current.medianTimeToFirstWordMs(),
-                micActive: { ...s.micActive, voice: false },
+                micActive: { ...s.micActive, voice: true },
               }));
             }
           } else {

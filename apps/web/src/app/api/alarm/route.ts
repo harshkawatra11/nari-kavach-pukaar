@@ -66,6 +66,7 @@ export async function POST(req: Request) {
     timeHHMM,
     point: lastPoint,
     trackUrl,
+    testMode: session.testMode === true,
   });
 
   const contacts = (session.contacts ?? []) as { name: string; phone: string }[];

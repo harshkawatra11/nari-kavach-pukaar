@@ -14,7 +14,7 @@ export default function SetupPage() {
   const router = useRouter();
   const [userName, setUserName] = useState("");
   const [contacts, setContacts] = useState<Contact[]>([{ id: crypto.randomUUID(), name: "", phone: "", relationship: "" }]);
-  const [duressPhrase, setDuressPhrase] = useState("No, I already told mom. I will eat at home.");
+  const [duressPhrase, setDuressPhrase] = useState("Mummy ko bol dena, blue notebook kitchen mein hai.");
   const [language, setLanguage] = useState<Lang>("auto");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -36,7 +36,16 @@ export default function SetupPage() {
       const res = await fetch("/api/session", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ contacts: validContacts, duressPhrase, language, userName: userName || "she" }),
+        body: JSON.stringify({
+          contacts: validContacts,
+          duressPhrase,
+          language,
+          userName: userName || "she",
+          // Deliberately URL-scoped and absent from the normal setup UI. It
+          // lets the demo team run an explicitly labelled delivery rehearsal
+          // without risking a test message that reads like a real emergency.
+          testMode: new URLSearchParams(window.location.search).get("test") === "1",
+        }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error ?? "failed to create session");

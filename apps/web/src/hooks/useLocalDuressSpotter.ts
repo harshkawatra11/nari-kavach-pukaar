@@ -35,6 +35,11 @@ export function useLocalDuressSpotter(opts: { sessionId: string; duressPhrase: s
   const stoppedRef = useRef(false);
   const firedRef = useRef(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const onFiredRef = useRef(opts.onFired);
+
+  useEffect(() => {
+    onFiredRef.current = opts.onFired;
+  }, [opts.onFired]);
 
   useEffect(() => {
     if (!opts.enabled) return;
@@ -66,7 +71,7 @@ export function useLocalDuressSpotter(opts: { sessionId: string; duressPhrase: s
         if (match.matched) {
           firedRef.current = true;
           setFired(true);
-          opts.onFired();
+          onFiredRef.current();
           void fetch("/api/alarm", {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -111,7 +116,7 @@ export function useLocalDuressSpotter(opts: { sessionId: string; duressPhrase: s
       recognition.onend = null;
       recognition.stop();
     };
-  }, [opts, opts.enabled]);
+  }, [opts.duressPhrase, opts.enabled, opts.sessionId]);
 
   return { available, armed, fired };
 }

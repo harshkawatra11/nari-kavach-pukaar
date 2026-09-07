@@ -6,6 +6,7 @@ interface CreateSessionBody {
   duressPhrase: string;
   language: Lang;
   userName: string;
+  testMode: boolean;
 }
 
 export async function POST(req: Request) {
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
     duressPhrase: body.duressPhrase.trim(),
     language: body.language ?? "auto",
     userName: body.userName?.trim() || "she",
+    testMode: body.testMode === true,
   });
 
   return Response.json({ ok: true, sessionId, trackToken });

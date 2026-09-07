@@ -14,8 +14,9 @@ export class AudioPlaybackQueue {
   private playhead = 0;
   readonly analyser: AnalyserNode;
   private timeDomainBuffer: Uint8Array;
+  private pendingSources = 0;
 
-  constructor() {
+  constructor(private readonly onIdle?: () => void) {
     this.ctx = new AudioContext();
     this.analyser = this.ctx.createAnalyser();
     this.analyser.fftSize = 512;
@@ -34,6 +35,11 @@ export class AudioPlaybackQueue {
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
     src.connect(this.analyser);
+    this.pendingSources += 1;
+    src.onended = () => {
+      this.pendingSources = Math.max(0, this.pendingSources - 1);
+      if (this.pendingSources === 0) this.onIdle?.();
+    };
     const startAt = Math.max(this.ctx.currentTime, this.playhead);
     src.start(startAt);
     this.playhead = startAt + buf.duration;
@@ -56,6 +62,7 @@ export class AudioPlaybackQueue {
   }
 
   close() {
+    this.pendingSources = 0;
     void this.ctx.close();
   }
 }

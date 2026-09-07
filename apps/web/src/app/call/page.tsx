@@ -78,7 +78,10 @@ function CallScreen() {
     let cancelled = false;
     let attempts = 0;
     const poll = async () => {
-      if (cancelled || attempts > 8) return;
+      // WhatsApp Desktop startup and UI verification can legitimately take
+      // longer than the bridge's fast path. Keep polling for 45 seconds so a
+      // real result replaces the initial dispatching state on slower laptops.
+      if (cancelled || attempts > 30) return;
       attempts += 1;
       try {
         const res = await fetch(`/api/session/${sessionId}/alert-result`);

@@ -47,7 +47,7 @@ export function AlarmToast({
                 <ul className="mt-1.5 flex flex-col gap-0.5">
                   {contacts.map((c) => (
                     <li key={c.phone} className="text-[length:var(--text-sm)] text-ink-soft">
-                      {c.name}: {c.sent ? "message sent" : `failed (${c.error ?? "unknown error"})`}
+                      {c.name}: {c.sent ? "submitted to WhatsApp" : `failed (${c.error ?? "unknown error"})`}
                     </li>
                   ))}
                   {contacts.length === 0 && <li className="text-[length:var(--text-sm)] text-ink-faint">Dispatching&hellip;</li>}

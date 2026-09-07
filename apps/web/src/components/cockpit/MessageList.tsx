@@ -39,7 +39,7 @@ export function MessageList({ lines }: { lines: TranscriptLine[] }) {
               line.isAlarmLine ? (
                 <span className="inline-flex items-center gap-1.5 text-[length:var(--text-2xs)] text-alarm">
                   <span className="h-1.5 w-1.5 rounded-[var(--radius-full)] bg-alarm" />
-                  Safe word detected &middot; alert sent
+                  Safe word detected &middot; dispatch started
                 </span>
               ) : undefined
             }
