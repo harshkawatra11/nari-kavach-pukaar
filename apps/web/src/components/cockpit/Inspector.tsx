@@ -121,9 +121,10 @@ export function Inspector({
             <span className="font-mono uppercase text-ink">{location.status}</span>
           </div>
           {location.capturedAt && (
-            <p className="mt-1 text-[length:var(--text-2xs)] text-ink-faint">
-              Updated {Math.floor((location.ageMs ?? 0) / 1000)}s ago{accuracyM !== null ? ` · ±${Math.round(accuracyM)}m` : ""}
-            </p>
+            <div className="mt-1 text-[length:var(--text-2xs)] text-ink-faint">
+              <p>{location.status === "snapshot" ? "Selected in Telegram" : "Updated"} {Math.floor((location.ageMs ?? 0) / 1000)}s ago</p>
+              {location.status === "snapshot" ? <p>Accuracy unavailable</p> : accuracyM !== null ? <p>Accuracy ±{Math.round(accuracyM)}m</p> : null}
+            </div>
           )}
           {trackUrl && (
             <Button variant="quiet" size="sm" className="mt-1 px-0" onClick={() => window.open(trackUrl, "_blank", "noopener,noreferrer")}>

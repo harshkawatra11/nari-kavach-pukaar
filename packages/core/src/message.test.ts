@@ -48,4 +48,15 @@ describe("buildAlertMessage", () => {
     });
     expect(msg).toContain("Last known location:");
   });
+
+  it("labels Telegram coordinates as a selected snapshot", () => {
+    const msg = buildAlertMessage({
+      userName: "Dayita",
+      timeHHMM: "21:04",
+      point: { lat: 28.7138, lng: 77.20711, accuracyM: null, at: Date.now(), source: "telegram-desktop" },
+      trackUrl: "https://pukaar-web-wine.vercel.app/t/abc123",
+    });
+    expect(msg).toContain("Selected location:");
+    expect(msg).not.toContain("Current location:");
+  });
 });

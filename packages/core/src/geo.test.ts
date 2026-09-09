@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { haversineM, mapsLink, shouldPersistPing } from "./geo";
+import { haversineM, locationFreshness, mapsLink, parseTelegramMapsLink, shouldPersistPing } from "./geo";
 import type { GeoPoint } from "./types";
 
 const DU = { lat: 28.6879, lng: 77.2107, accuracyM: 10, at: 0 };
@@ -44,5 +44,48 @@ describe("shouldPersistPing", () => {
 describe("mapsLink", () => {
   it("builds a google maps query link", () => {
     expect(mapsLink(DU)).toBe("https://www.google.com/maps/search/?api=1&query=28.6879%2C77.2107");
+  });
+});
+
+describe("parseTelegramMapsLink", () => {
+  it("parses Telegram's maps.google.com location link", () => {
+    expect(parseTelegramMapsLink("https://maps.google.com/maps?q=28.713800,77.207110&ll=28.713800,77.207110&z=16")).toEqual({
+      lat: 28.7138,
+      lng: 77.20711,
+      canonicalUrl: "https://www.google.com/maps/search/?api=1&query=28.7138%2C77.20711",
+    });
+  });
+
+  it("parses a canonical Google Maps search link", () => {
+    expect(parseTelegramMapsLink("https://www.google.com/maps/search/?api=1&query=28.713800%2C77.207110")).toMatchObject({ lat: 28.7138, lng: 77.20711 });
+  });
+
+  it.each([
+    "http://maps.google.com/maps?q=28.7,77.2",
+    "https://evil.example/maps?q=28.7,77.2",
+    "https://maps.app.goo.gl/example",
+    "https://maps.google.com/maps?q=Delhi",
+    "not a link",
+  ])("rejects unsafe or non-coordinate input: %s", (input) => {
+    expect(parseTelegramMapsLink(input)).toBeNull();
+  });
+
+  it("rejects out-of-range coordinates", () => {
+    expect(parseTelegramMapsLink("https://maps.google.com/maps?q=91,77")).toBeNull();
+  });
+
+  it("rejects conflicting q and ll coordinates", () => {
+    expect(parseTelegramMapsLink("https://maps.google.com/maps?q=28.7,77.2&ll=29.7,78.2")).toBeNull();
+  });
+});
+
+describe("locationFreshness", () => {
+  it("reports Telegram locations as snapshots", () => {
+    const point = { ...DU, accuracyM: null, source: "telegram-desktop" as const };
+    expect(locationFreshness(point, 1000)).toEqual({ capturedAt: 0, ageMs: 1000, status: "snapshot" });
+  });
+
+  it("keeps legacy locations on browser freshness rules", () => {
+    expect(locationFreshness(DU, 1000).status).toBe("live");
   });
 });

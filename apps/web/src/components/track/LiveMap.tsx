@@ -19,6 +19,7 @@ export function LiveMap({ trail, alarm, userName }: { trail: GeoPoint[]; alarm: 
   const [, forceTick] = useState(0);
   const point = trail.at(-1) ?? null;
   const freshness = locationFreshness(point);
+  const isTelegramSnapshot = point?.source === "telegram-desktop";
 
   useEffect(() => {
     const id = setInterval(() => forceTick((n) => n + 1), 5000);
@@ -51,10 +52,10 @@ export function LiveMap({ trail, alarm, userName }: { trail: GeoPoint[]; alarm: 
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[length:var(--text-base)] text-ink-soft">
-              {freshness.status === "live" ? "Live position" : "Last known position"}, updated {agoLabel(point.at)}
+              {isTelegramSnapshot ? "Telegram-selected location" : freshness.status === "live" ? "Live position" : "Last known position"}, {isTelegramSnapshot ? "selected" : "updated"} {agoLabel(point.at)}
             </p>
             <p className="mt-1 font-mono text-[length:var(--text-xs)] text-ink-faint">
-              {point.lat.toFixed(5)}, {point.lng.toFixed(5)} &middot; &plusmn;{Math.round(point.accuracyM)}m
+              {point.lat.toFixed(5)}, {point.lng.toFixed(5)}{point.accuracyM !== null ? <>&middot; &plusmn;{Math.round(point.accuracyM)}m</> : null}
             </p>
           </div>
           <Button variant="secondary" size="sm" onClick={() => window.open(mapsLink(point), "_blank", "noopener,noreferrer")}>

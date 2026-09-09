@@ -10,6 +10,25 @@ import { DuressPhrasePicker } from "@/components/setup/DuressPhrasePicker";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
+interface CreatedSession {
+  sessionId: string;
+  trackToken: string;
+  controlToken: string;
+  trackUrl: string;
+}
+
+type TelegramStage = "queued" | "opening_telegram" | "opening_saved_messages" | "opening_picker" | "awaiting_confirmation" | "copying_link" | "captured";
+
+const TELEGRAM_STAGE_LABEL: Record<TelegramStage, string> = {
+  queued: "Opening Telegram",
+  opening_telegram: "Opening Telegram",
+  opening_saved_messages: "Opening Saved Messages",
+  opening_picker: "Opening location picker",
+  awaiting_confirmation: "Check the pin, then click Send this location in Telegram",
+  copying_link: "Reading location",
+  captured: "Securing location",
+};
+
 export default function SetupPage() {
   const router = useRouter();
   const [userName, setUserName] = useState("");
@@ -17,17 +36,90 @@ export default function SetupPage() {
   const [duressPhrase, setDuressPhrase] = useState("Mummy ko bol dena blue notebook drawer mein rakhi hai");
   const [language, setLanguage] = useState<Lang>("auto");
   const [error, setError] = useState<string | null>(null);
-  const [submitStage, setSubmitStage] = useState<"idle" | "creating" | "locating" | "opening">("idle");
+  const [submitStage, setSubmitStage] = useState<"idle" | "creating" | "locating" | "fallback" | "telegram" | "secured" | "opening">("idle");
+  const [pendingSession, setPendingSession] = useState<CreatedSession | null>(null);
+  const [telegramStage, setTelegramStage] = useState<TelegramStage>("queued");
 
   function getInitialLocation(): Promise<GeoPoint | null> {
     if (!("geolocation" in navigator)) return Promise.resolve(null);
     return new Promise((resolve) => {
       navigator.geolocation.getCurrentPosition(
-        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracyM: pos.coords.accuracy, at: Date.now() }),
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracyM: pos.coords.accuracy, at: pos.timestamp, source: "browser" }),
         () => resolve(null),
         { enableHighAccuracy: true, maximumAge: 15000, timeout: 8000 },
       );
     });
+  }
+
+  function openCall(data: CreatedSession, point: GeoPoint | null) {
+    if (point) sessionStorage.setItem("pukaar.initialLocation", JSON.stringify(point));
+    else sessionStorage.removeItem("pukaar.initialLocation");
+    sessionStorage.setItem("pukaar.userName", userName || "she");
+    sessionStorage.setItem("pukaar.duressPhrase", duressPhrase);
+    sessionStorage.setItem("pukaar.language", language);
+    sessionStorage.setItem("pukaar.trackUrl", data.trackUrl);
+    sessionStorage.setItem("pukaar.controlToken", data.controlToken);
+    setSubmitStage("opening");
+    router.push(`/call?sessionId=${data.sessionId}&trackToken=${data.trackToken}`);
+  }
+
+  async function persistBrowserPoint(data: CreatedSession, point: GeoPoint): Promise<GeoPoint | null> {
+    try {
+      const response = await fetch(`/api/session/${data.sessionId}/location`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-session-control": data.controlToken },
+        body: JSON.stringify(point),
+      });
+      const body = await response.json();
+      return response.ok && body.ok && body.persistedPoint ? body.persistedPoint as GeoPoint : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function tryBrowserLocation(data: CreatedSession) {
+    setError(null);
+    setSubmitStage("locating");
+    const point = await getInitialLocation();
+    const persisted = point ? await persistBrowserPoint(data, point) : null;
+    if (persisted) openCall(data, persisted);
+    else setSubmitStage("fallback");
+  }
+
+  async function useTelegramLocation() {
+    if (!pendingSession) return;
+    setError(null);
+    setTelegramStage("queued");
+    setSubmitStage("telegram");
+    try {
+      const response = await fetch(`/api/session/${pendingSession.sessionId}/telegram-location`, {
+        method: "POST",
+        headers: { "x-session-control": pendingSession.controlToken },
+      });
+      const started = await response.json();
+      if (!response.ok || !started.ok) throw new Error(started.error ?? "Could not open Telegram");
+      for (let attempt = 0; attempt < 180; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        const statusResponse = await fetch(`/api/session/${pendingSession.sessionId}/telegram-location?captureId=${encodeURIComponent(started.captureId)}`, {
+          headers: { "x-session-control": pendingSession.controlToken },
+          cache: "no-store",
+        });
+        const status = await statusResponse.json();
+        if (!statusResponse.ok || !status.ok) throw new Error(status.error ?? "Telegram location could not be read");
+        if (status.stage in TELEGRAM_STAGE_LABEL) setTelegramStage(status.stage as TelegramStage);
+        if (status.stage === "captured" && status.persistedPoint) {
+          setSubmitStage("secured");
+          await new Promise((resolve) => setTimeout(resolve, 650));
+          openCall(pendingSession, status.persistedPoint as GeoPoint);
+          return;
+        }
+        if (["cancelled", "failed", "unparsed"].includes(status.stage)) throw new Error(status.error ?? "Telegram location was not captured");
+      }
+      throw new Error("Telegram location confirmation timed out");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Telegram location was not captured");
+      setSubmitStage("fallback");
+    }
   }
 
   async function handleStart() {
@@ -60,25 +152,9 @@ export default function SetupPage() {
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error ?? "failed to create session");
-      setSubmitStage("locating");
-      const initialPoint = await getInitialLocation();
-      if (initialPoint) {
-        await fetch(`/api/session/${data.sessionId}/location`, {
-          method: "POST",
-          headers: { "content-type": "application/json", "x-session-control": data.controlToken },
-          body: JSON.stringify(initialPoint),
-        }).catch(() => undefined);
-        sessionStorage.setItem("pukaar.initialLocation", JSON.stringify(initialPoint));
-      } else {
-        sessionStorage.removeItem("pukaar.initialLocation");
-      }
-      sessionStorage.setItem("pukaar.userName", userName || "she");
-      sessionStorage.setItem("pukaar.duressPhrase", duressPhrase);
-      sessionStorage.setItem("pukaar.language", language);
-      sessionStorage.setItem("pukaar.trackUrl", data.trackUrl);
-      sessionStorage.setItem("pukaar.controlToken", data.controlToken);
-      setSubmitStage("opening");
-      router.push(`/call?sessionId=${data.sessionId}&trackToken=${data.trackToken}`);
+      const created = data as CreatedSession;
+      setPendingSession(created);
+      await tryBrowserLocation(created);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setSubmitStage("idle");
@@ -124,6 +200,31 @@ export default function SetupPage() {
           </SettingsRow>
         </SettingsGroup>
 
+        {pendingSession && ["fallback", "telegram", "secured"].includes(submitStage) && (
+          <SettingsGroup label="Location">
+            <div className="px-4 py-4">
+              {submitStage === "fallback" ? (
+                <>
+                  <p className="text-[length:var(--text-base)] text-ink">Your browser could not provide a location.</p>
+                  <p className="mt-1 text-[length:var(--text-sm)] text-ink-soft">Use Telegram to select and verify a location, or continue without one.</p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button onClick={useTelegramLocation}>Use Telegram location</Button>
+                    <Button variant="secondary" onClick={() => void tryBrowserLocation(pendingSession)}>Try browser again</Button>
+                    <Button variant="quiet" onClick={() => openCall(pendingSession, null)}>Continue without location</Button>
+                  </div>
+                </>
+              ) : submitStage === "secured" ? (
+                <p className="text-[length:var(--text-base)] text-ink">Location secured through Telegram</p>
+              ) : (
+                <>
+                  <p className="text-[length:var(--text-base)] text-ink">{TELEGRAM_STAGE_LABEL[telegramStage]}</p>
+                  <p className="mt-1 text-[length:var(--text-sm)] text-ink-soft">Pukaar will return here after the location link is verified.</p>
+                </>
+              )}
+            </div>
+          </SettingsGroup>
+        )}
+
         <div className="fixed inset-x-0 bottom-0 border-t border-hairline bg-ground px-5 py-3">
           <div className="mx-auto flex max-w-[620px] items-center gap-3">
             {error && (
@@ -131,9 +232,11 @@ export default function SetupPage() {
                 {error}
               </p>
             )}
-            <Button className="ml-auto" onClick={handleStart} disabled={submitStage !== "idle"}>
-              {submitStage === "creating" ? "Creating session" : submitStage === "locating" ? "Securing location" : submitStage === "opening" ? "Opening call" : "Start call"}
-            </Button>
+            {!pendingSession && (
+              <Button className="ml-auto" onClick={handleStart} disabled={submitStage !== "idle"}>
+                {submitStage === "creating" ? "Creating session" : submitStage === "locating" ? "Securing location" : submitStage === "opening" ? "Opening call" : "Start call"}
+              </Button>
+            )}
           </div>
         </div>
       </main>

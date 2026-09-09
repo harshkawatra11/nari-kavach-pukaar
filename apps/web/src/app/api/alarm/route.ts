@@ -1,5 +1,5 @@
 import { buildAlertMessage, mapsLink } from "@pukaar/core";
-import type { TriggerPath } from "@pukaar/core";
+import type { GeoPoint, TriggerPath } from "@pukaar/core";
 import { getDb } from "@/lib/firestore/admin";
 import { recordAlert } from "@/lib/firestore/alerts";
 import { sendWhatsAppAlerts } from "@/lib/wa/bridge";
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
   }
 
   const session = outcome.session;
-  const trail = (session.trail ?? []) as { lat: number; lng: number; accuracyM: number; at: number }[];
+  const trail = (session.trail ?? []) as GeoPoint[];
   const lastPoint = trail.length > 0 ? trail[trail.length - 1] : null;
   const trackUrl = `${env.PUBLIC_TRACKING_ORIGIN}/t/${session.trackToken}`;
   const timeHHMM = new Date(outcome.at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false });

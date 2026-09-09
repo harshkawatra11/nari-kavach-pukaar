@@ -2,12 +2,12 @@
   "name": "@pukaar/wa-bridge",
   "version": "0.1.0",
   "private": true,
-  "description": "Laptop-local WhatsApp Desktop automation bridge for Pukaar alerts. Windows only. Not deployed.",
+  "description": "Laptop-local Telegram and WhatsApp Desktop bridge for Pukaar. Windows only. Not deployed.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "lint": "echo 'wa-bridge is plain JS, no lint config, matches the vendored source'",
-    "test": "node --test *.test.js",
+    "test": "node --test *.test.js telegram/*.test.js",
     "build": "echo 'nothing to build, plain node script'",
     "typecheck": "echo 'plain JS, no typecheck'"
   },

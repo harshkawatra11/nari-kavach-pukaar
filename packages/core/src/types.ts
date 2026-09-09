@@ -40,8 +40,9 @@ export type TriggerPath = "server-tool" | "client-local";
 export interface GeoPoint {
   lat: number;
   lng: number;
-  accuracyM: number;
+  accuracyM: number | null;
   at: number;
+  source?: "browser" | "telegram-desktop";
 }
 
 export interface TurnMark {

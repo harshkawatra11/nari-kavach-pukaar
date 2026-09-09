@@ -15,3 +15,11 @@ test("duplicate IDs return the original job", () => {
   assert.equal(store.create(input).created, true);
   assert.equal(store.create(input).created, false);
 });
+
+test("supports captureId as the idempotency key", () => {
+  const store = createJobStore({ idField: "captureId" });
+  const input = { captureId: "capture-123", confirmationTimeoutMs: 45000 };
+  assert.equal(store.create(input).created, true);
+  assert.equal(store.create(input).created, false);
+  assert.equal(store.get("capture-123").stage, "queued");
+});

@@ -1,10 +1,11 @@
-function createJobStore() {
+function createJobStore({ idField = "alertId" } = {}) {
   const jobs = new Map();
   function create(input) {
-    const existing = jobs.get(input.alertId);
+    const id = input[idField];
+    const existing = jobs.get(id);
     if (existing) return { job: existing, created: false };
     const job = { ...input, stage: "queued", foregroundRestored: false, createdAt: Date.now(), updatedAt: Date.now() };
-    jobs.set(input.alertId, job);
+    jobs.set(id, job);
     return { job, created: true };
   }
   function get(id) { return jobs.get(id) || null; }

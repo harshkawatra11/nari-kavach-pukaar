@@ -52,7 +52,7 @@ export function useGeoTrail(sessionId: string, controlToken: string, enabled: bo
 
     const id = navigator.geolocation.watchPosition(
       (pos) => {
-        const point: GeoPoint = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracyM: pos.coords.accuracy, at: pos.timestamp };
+        const point: GeoPoint = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracyM: pos.coords.accuracy, at: pos.timestamp, source: "browser" };
         setSyncState("captured");
         void upload(point);
       },

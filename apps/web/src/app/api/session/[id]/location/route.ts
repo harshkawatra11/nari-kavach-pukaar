@@ -15,8 +15,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const result = await appendLocationPing(id, {
     lat: point.lat,
     lng: point.lng,
-    accuracyM: point.accuracyM ?? 0,
+    accuracyM: typeof point.accuracyM === "number" ? point.accuracyM : null,
     at: point.at ?? Date.now(),
+    source: point.source === "telegram-desktop" ? "telegram-desktop" : "browser",
   });
   if (result.status === "missing") return Response.json({ ok: false, error: "session not found" }, { status: 404 });
   if (result.status === "ended") return Response.json({ ok: false, error: "session ended", persistedPoint: result.persistedPoint }, { status: 410 });
