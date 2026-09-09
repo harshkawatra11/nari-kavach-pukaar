@@ -41,6 +41,7 @@ function CallScreen() {
     language: "auto" as "hi-IN" | "en-IN" | "auto",
     initialLocation: null as GeoPoint | null,
     trackUrl: null as string | null,
+    controlToken: "",
   });
 
   useEffect(() => {
@@ -58,12 +59,13 @@ function CallScreen() {
       language: (sessionStorage.getItem("pukaar.language") as "hi-IN" | "en-IN" | "auto" | null) ?? "auto",
       initialLocation,
       trackUrl: sessionStorage.getItem("pukaar.trackUrl"),
+      controlToken: sessionStorage.getItem("pukaar.controlToken") ?? "",
     });
   }, []);
 
-  const { userName, duressPhrase, language } = session;
+  const { userName, duressPhrase, language, controlToken } = session;
 
-  const { state, start, sendTyped } = useVoiceSession({
+  const { state, start, stop, sendTyped } = useVoiceSession({
     sessionId,
     language: language ?? "auto",
     duressPhrase,
@@ -76,6 +78,7 @@ function CallScreen() {
 
   const spotter = useLocalDuressSpotter({
     sessionId,
+    controlToken,
     duressPhrase,
     enabled: started,
     onFired: () => {
@@ -84,7 +87,7 @@ function CallScreen() {
     },
   });
 
-  const geo = useGeoTrail(sessionId, started, session.initialLocation);
+  const geo = useGeoTrail(sessionId, controlToken, started, session.initialLocation);
 
   useEffect(() => {
     if (!started) return;
@@ -133,11 +136,17 @@ function CallScreen() {
     window.dispatchEvent(new Event("pukaar:kill-relay"));
   }
 
+  async function handleEnd() {
+    stop();
+    if (sessionId) await fetch(`/api/session/${sessionId}/end`, { method: "POST", headers: { "x-session-control": controlToken } }).catch(() => undefined);
+    router.push("/");
+  }
+
   const trackUrl = session.trackUrl;
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <CockpitRail onCoverMode={() => setCoverMode(true)} onEnd={() => router.push("/")} />
+      <CockpitRail onCoverMode={() => setCoverMode(true)} onEnd={() => void handleEnd()} />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <CallHeader phase={state.phase} connected={state.connected} started={started} />
@@ -155,7 +164,7 @@ function CallScreen() {
           phase={state.phase}
           sttMode={state.sttMode}
           onStart={handleStart}
-          onEnd={() => router.push("/")}
+          onEnd={() => void handleEnd()}
           onSendTyped={sendTyped}
         />
       </div>

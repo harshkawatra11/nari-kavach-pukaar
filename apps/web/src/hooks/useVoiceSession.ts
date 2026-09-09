@@ -121,6 +121,15 @@ export function useVoiceSession(opts: {
           setState((s) => ({ ...s, micActive: { ...s.micActive, stt: true } }));
           setPhase("listening");
           break;
+        case "vad":
+          if (frame.state === "start") {
+            playbackRef.current?.clear();
+            setPhase("listening");
+            setState((s) => ({ ...s, micActive: { ...s.micActive, stt: true, voice: false } }));
+          } else {
+            setState((s) => ({ ...s, micActive: { ...s.micActive, stt: false } }));
+          }
+          break;
         case "final":
           setState((s) => finalizeLine(s, frame.text));
           clockRef.current.startTurn(frame.turnId, Date.now());

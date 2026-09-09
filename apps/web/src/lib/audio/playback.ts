@@ -15,6 +15,7 @@ export class AudioPlaybackQueue {
   readonly analyser: AnalyserNode;
   private timeDomainBuffer: Uint8Array;
   private pendingSources = 0;
+  private sources = new Set<AudioBufferSourceNode>();
 
   constructor(private readonly onIdle?: () => void) {
     this.ctx = new AudioContext();
@@ -36,13 +37,25 @@ export class AudioPlaybackQueue {
     src.buffer = buf;
     src.connect(this.analyser);
     this.pendingSources += 1;
+    this.sources.add(src);
     src.onended = () => {
+      this.sources.delete(src);
       this.pendingSources = Math.max(0, this.pendingSources - 1);
       if (this.pendingSources === 0) this.onIdle?.();
     };
     const startAt = Math.max(this.ctx.currentTime, this.playhead);
     src.start(startAt);
     this.playhead = startAt + buf.duration;
+  }
+
+  clear() {
+    for (const source of this.sources) {
+      try { source.stop(); } catch { /* source already ended */ }
+    }
+    this.sources.clear();
+    this.pendingSources = 0;
+    this.playhead = this.ctx.currentTime;
+    this.onIdle?.();
   }
 
   /** RMS of the current output buffer, 0..1. Cheap enough to call every
@@ -62,7 +75,7 @@ export class AudioPlaybackQueue {
   }
 
   close() {
-    this.pendingSources = 0;
+    this.clear();
     void this.ctx.close();
   }
 }

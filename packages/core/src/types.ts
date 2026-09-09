@@ -19,6 +19,7 @@ export interface SessionDoc {
   id: string;
   /** Unguessable, 21-char nanoid. The only thing standing between the internet and her map. */
   trackToken: string;
+  controlTokenHash?: string;
   createdAt: number;
   endedAt: number | null;
   language: Lang;

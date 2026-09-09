@@ -39,11 +39,13 @@ export function openSttSocket(opts: {
     model: "saaras:v3-realtime",
     language_code: opts.language,
     stream_type: "fast",
+    mode: "translit",
     encoding: "linear16",
     sample_rate: "16000",
     endpointing: "vad",
     silence_duration_ms: "500",
     threshold: "0.3",
+    timestamps: "true",
   });
   const ws = new WebSocket(`wss://api.sarvam.ai/speech-to-text-realtime/ws?${qs}`, {
     headers: { "api-subscription-key": opts.apiKey },

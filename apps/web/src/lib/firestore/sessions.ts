@@ -1,5 +1,6 @@
 import { Timestamp, FieldValue } from "firebase-admin/firestore";
 import { customAlphabet } from "nanoid";
+import { createHash, randomBytes } from "node:crypto";
 import type { Contact, GeoPoint, Lang, SessionDoc } from "@pukaar/core";
 import { shouldPersistPing } from "@pukaar/core";
 import { getDb } from "./admin";
@@ -17,14 +18,16 @@ export async function createSession(input: {
   language: Lang;
   userName: string;
   testMode?: boolean;
-}): Promise<{ sessionId: string; trackToken: string }> {
+}): Promise<{ sessionId: string; trackToken: string; controlToken: string }> {
   const db = getDb();
   const ref = db.collection(SESSIONS).doc();
   const now = Date.now();
   const trackToken = nanoid();
+  const controlToken = randomBytes(32).toString("base64url");
 
   const doc: Omit<SessionDoc, "id"> & { expiresAt: Timestamp } = {
     trackToken,
+    controlTokenHash: createHash("sha256").update(controlToken).digest("hex"),
     createdAt: now,
     endedAt: null,
     language: input.language,
@@ -41,7 +44,14 @@ export async function createSession(input: {
   };
 
   await ref.set(doc);
-  return { sessionId: ref.id, trackToken };
+  return { sessionId: ref.id, trackToken, controlToken };
+}
+
+export async function verifySessionControl(sessionId: string, token: string | null): Promise<boolean> {
+  if (!token) return false;
+  const session = await getSession(sessionId);
+  if (!session?.controlTokenHash) return false;
+  return createHash("sha256").update(token).digest("hex") === session.controlTokenHash;
 }
 
 export async function getSession(sessionId: string): Promise<(SessionDoc & { expiresAt: Timestamp }) | null> {
@@ -63,18 +73,19 @@ export async function endSession(sessionId: string): Promise<void> {
 
 /** Applies the movement/interval gate before writing, so a stationary phone
  *  does not spam Firestore writes during a live demo. */
-export async function appendLocationPing(sessionId: string, point: GeoPoint): Promise<{ written: boolean }> {
+export async function appendLocationPing(sessionId: string, point: GeoPoint): Promise<{ written: boolean; persistedPoint: GeoPoint | null; status: "active" | "missing" | "ended" }> {
   const db = getDb();
   const ref = db.collection(SESSIONS).doc(sessionId);
   const snap = await ref.get();
-  if (!snap.exists) return { written: false };
+  if (!snap.exists) return { written: false, persistedPoint: null, status: "missing" };
 
   const data = snap.data() as SessionDoc;
   const trail = data.trail ?? [];
   const last = trail.length > 0 ? trail[trail.length - 1] : null;
+  if (data.status !== "active") return { written: false, persistedPoint: last, status: "ended" };
 
-  if (!shouldPersistPing(last, point)) return { written: false };
+  if (!shouldPersistPing(last, point)) return { written: false, persistedPoint: last, status: "active" };
 
   await ref.update({ trail: FieldValue.arrayUnion(point) });
-  return { written: true };
+  return { written: true, persistedPoint: point, status: "active" };
 }

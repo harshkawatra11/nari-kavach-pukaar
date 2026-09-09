@@ -34,6 +34,9 @@ export const env = {
     return required("RELAY_SHARED_SECRET");
   },
   WA_BRIDGE_URL: optional("WA_BRIDGE_URL", "http://127.0.0.1:8790"),
+  get WA_BRIDGE_SECRET() {
+    return required("WA_BRIDGE_SECRET");
+  },
   get PUBLIC_TRACKING_ORIGIN() {
     return validatePublicTrackingOrigin(required("PUBLIC_TRACKING_ORIGIN"));
   },

@@ -10,9 +10,11 @@ export interface AlertRecord {
   at: number;
   contacts: { name: string; phone: string; submitted?: boolean; sent?: boolean; error?: string }[];
   foregroundRestored?: boolean;
+  stage?: "detected" | "queued" | "preparing" | "submitting" | "submitted" | "failed" | "unknown";
 }
 
-export async function recordAlert(record: AlertRecord): Promise<string> {
-  const ref = await getDb().collection(ALERTS).add(record);
+export async function recordAlert(record: AlertRecord, alertId?: string): Promise<string> {
+  const ref = alertId ? getDb().collection(ALERTS).doc(alertId) : getDb().collection(ALERTS).doc();
+  await ref.set(record, { merge: true });
   return ref.id;
 }

@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "lint": "echo 'wa-bridge is plain JS, no lint config, matches the vendored source'",
-    "test": "echo 'no automated tests: this drives a real OS window and is verified manually per docs/DEMO-RUNBOOK.md'",
+    "test": "node --test *.test.js",
     "build": "echo 'nothing to build, plain node script'",
     "typecheck": "echo 'plain JS, no typecheck'"
   },

@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, error: "duress phrase must be a real sentence, not a single word" }, { status: 400 });
   }
 
-  const { sessionId, trackToken } = await createSession({
+  const { sessionId, trackToken, controlToken } = await createSession({
     contacts: body.contacts,
     duressPhrase: body.duressPhrase.trim(),
     language: body.language ?? "auto",
@@ -28,5 +28,5 @@ export async function POST(req: Request) {
     testMode: body.testMode === true,
   });
 
-  return Response.json({ ok: true, sessionId, trackToken, trackUrl: `${env.PUBLIC_TRACKING_ORIGIN}/t/${trackToken}` });
+  return Response.json({ ok: true, sessionId, trackToken, controlToken, trackUrl: `${env.PUBLIC_TRACKING_ORIGIN}/t/${trackToken}` });
 }

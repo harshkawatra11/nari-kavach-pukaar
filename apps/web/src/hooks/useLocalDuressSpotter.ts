@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { detectDuress } from "@pukaar/core";
+import { createTranscriptWindow, matchPhrase, profileForStoredPhrase } from "@pukaar/core";
 
 // Trigger path 2. Runs entirely in the browser against the Web Speech API's
 // own transcript, and posts straight to /api/alarm without going near the
@@ -28,7 +28,7 @@ interface SpeechRecognitionLike extends EventTarget {
   onerror: ((ev: { error: string }) => void) | null;
 }
 
-export function useLocalDuressSpotter(opts: { sessionId: string; duressPhrase: string; enabled: boolean; onFired: () => void }) {
+export function useLocalDuressSpotter(opts: { sessionId: string; controlToken: string; duressPhrase: string; enabled: boolean; onFired: () => void }) {
   const [available, setAvailable] = useState(true);
   const [armed, setArmed] = useState(false);
   const [fired, setFired] = useState(false);
@@ -36,6 +36,8 @@ export function useLocalDuressSpotter(opts: { sessionId: string; duressPhrase: s
   const firedRef = useRef(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const onFiredRef = useRef(opts.onFired);
+  const transcriptWindowRef = useRef(createTranscriptWindow());
+  const epochRef = useRef(0);
 
   useEffect(() => {
     onFiredRef.current = opts.onFired;
@@ -57,7 +59,11 @@ export function useLocalDuressSpotter(opts: { sessionId: string; duressPhrase: s
     }
 
     stoppedRef.current = false;
+    firedRef.current = false;
+    transcriptWindowRef.current.reset();
+    epochRef.current += 1;
     const recognition = new SR();
+    const transcriptWindow = transcriptWindowRef.current;
     recognitionRef.current = recognition;
     recognition.continuous = true;
     recognition.interimResults = true;
@@ -65,17 +71,25 @@ export function useLocalDuressSpotter(opts: { sessionId: string; duressPhrase: s
 
     recognition.onresult = (ev) => {
       for (let i = ev.resultIndex; i < ev.results.length; i++) {
-        const transcript = ev.results[i][0].transcript;
+        const result = ev.results[i];
+        const transcript = result[0].transcript;
         if (firedRef.current) continue;
-        const match = detectDuress(transcript, opts.duressPhrase);
+        const combined = transcriptWindow.upsert({
+          id: `${epochRef.current}:${i}`,
+          text: transcript,
+          at: Date.now(),
+          final: result.isFinal,
+        });
+        if (!result.isFinal) continue;
+        const match = matchPhrase(combined, profileForStoredPhrase(opts.duressPhrase));
         if (match.matched) {
           firedRef.current = true;
           setFired(true);
           onFiredRef.current();
           void fetch("/api/alarm", {
             method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ sessionId: opts.sessionId, path: "client-local", reason: "local phrase match: " + match.window }),
+            headers: { "content-type": "application/json", "x-session-control": opts.controlToken },
+            body: JSON.stringify({ sessionId: opts.sessionId, path: "client-local", reason: "local phrase profile matched" }),
           });
         }
       }
@@ -96,6 +110,7 @@ export function useLocalDuressSpotter(opts: { sessionId: string; duressPhrase: s
     // restart after the session ends.
     recognition.onend = () => {
       if (!stoppedRef.current) {
+        epochRef.current += 1;
         try {
           recognition.start();
         } catch {
@@ -113,10 +128,11 @@ export function useLocalDuressSpotter(opts: { sessionId: string; duressPhrase: s
 
     return () => {
       stoppedRef.current = true;
+      transcriptWindow.reset();
       recognition.onend = null;
       recognition.stop();
     };
-  }, [opts.duressPhrase, opts.enabled, opts.sessionId]);
+  }, [opts.controlToken, opts.duressPhrase, opts.enabled, opts.sessionId]);
 
   return { available, armed, fired };
 }

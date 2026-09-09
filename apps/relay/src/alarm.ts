@@ -5,7 +5,7 @@ import { log } from "./log";
 // app's own alarm route, which is the single place both trigger paths converge
 // and get deduplicated. One writer, one dedupe window, no race between the
 // server tool call and the browser's local match arriving milliseconds apart.
-export async function raiseAlarm(sessionId: string, reason: string): Promise<void> {
+export async function raiseAlarm(sessionId: string, reason: string): Promise<{ ok: boolean; status?: number; error?: string }> {
   try {
     const res = await fetch(`${env.WEB_ORIGIN}/api/alarm`, {
       method: "POST",
@@ -17,8 +17,11 @@ export async function raiseAlarm(sessionId: string, reason: string): Promise<voi
     });
     if (!res.ok) {
       log.error("alarm POST to web app failed", { sessionId, status: res.status });
+      return { ok: false, status: res.status, error: "alarm request rejected" };
     }
+    return { ok: true, status: res.status };
   } catch (err) {
     log.error("alarm POST to web app threw", { sessionId, err: String(err) });
+    return { ok: false, error: String(err) };
   }
 }

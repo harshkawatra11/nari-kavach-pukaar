@@ -74,6 +74,10 @@ export async function synthesizeRest(opts: {
       target_language_code: opts.language === "auto" ? "hi-IN" : opts.language,
       speaker: opts.speaker.toLowerCase(),
       model: "bulbul:v3",
+      pace: 1,
+      temperature: 0.45,
+      speech_sample_rate: 24000,
+      output_audio_codec: "wav",
     }),
   });
 

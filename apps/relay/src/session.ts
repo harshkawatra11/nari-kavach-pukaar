@@ -2,7 +2,9 @@ import { randomUUID } from "crypto";
 import type WebSocket from "ws";
 import {
   containsForbiddenWord,
-  detectDuress,
+  createTranscriptWindow,
+  matchPhrase,
+  profileForStoredPhrase,
   NEUTRAL_FALLBACK_LINES,
   splitSentences,
   systemPrompt,
@@ -37,6 +39,8 @@ export class Session {
   private sttHandle: SttSocketHandle | null = null;
   private sttFailCount = 0;
   private sttMode: "ws" | "rest" = env.STT_MODE;
+  private transcriptWindow = createTranscriptWindow();
+  private sttEpoch = 0;
 
   constructor(ws: WebSocket) {
     this.ws = ws;
@@ -69,6 +73,7 @@ export class Session {
     this.sessionId = frame.sessionId;
     this.language = frame.language;
     this.duressPhrase = frame.duressPhrase;
+    this.transcriptWindow.reset();
     this.userName = frame.userName;
     this.history = [{ role: "system", content: systemPrompt({ duressPhrase: this.duressPhrase, userName: this.userName }) }];
 
@@ -82,12 +87,13 @@ export class Session {
     // the text frame as well as audio so the cockpit never starts with an
     // unexplained voice that is missing from the transcript.
     const openingTurnId = randomUUID();
-    const opening = "Hey, kya scene hai? Main line pe hoon, bata.";
+    const opening = "हाँ बेटा, बोलो. आज का दिन कैसा था?";
     send(this.ws, { t: "reply", text: opening, turnId: openingTurnId });
     await this.speakTurn(opening, openingTurnId);
   }
 
   private openStt() {
+    this.sttEpoch += 1;
     this.sttHandle = openSttSocket({
       apiKey: env.SARVAM_API_KEY,
       language: this.language,
@@ -96,6 +102,10 @@ export class Session {
           send(this.ws, { t: "partial", text: e.text, utteranceIdx: e.utterance_idx });
         } else if (e.event === "transcript.final") {
           void this.onFinalTranscript(e.text, e.utterance_idx);
+        } else if (e.event === "vad.speech_start") {
+          send(this.ws, { t: "vad", state: "start", utteranceIdx: e.utterance_idx });
+        } else if (e.event === "vad.speech_end") {
+          send(this.ws, { t: "vad", state: "end", utteranceIdx: e.utterance_idx });
         } else if (e.event === "error" && e.is_fatal) {
           this.degradeSttToRest("fatal STT error: " + e.message);
         }
@@ -157,11 +167,12 @@ export class Session {
     // Third, independent safety net: the relay also scans the final transcript
     // for the duress phrase, in addition to the model's own tool call and the
     // browser's local Web Speech matcher. Any one of the three can trigger.
-    const localMatch = detectDuress(text, this.duressPhrase);
+    const combinedTranscript = this.transcriptWindow.upsert({ id: `${this.sttEpoch}:${utteranceIdx}`, text, at: finalAt, final: true });
+    const localMatch = matchPhrase(combinedTranscript, profileForStoredPhrase(this.duressPhrase));
     if (localMatch.matched && !this.alarmRaised) {
       this.alarmRaised = true;
-      void raiseAlarm(this.sessionId, "relay-transcript-scan: " + localMatch.window);
-      send(this.ws, { t: "alarm", path: "server-tool", at: Date.now() });
+      const result = await raiseAlarm(this.sessionId, "relay phrase profile matched");
+      if (result.ok) send(this.ws, { t: "alarm", path: "server-tool", at: Date.now() });
     }
 
     this.history.push({ role: "user", content: text });
@@ -210,7 +221,9 @@ export class Session {
       // and so the system prompt (with the duress instruction) never gets
       // truncated out by the model provider.
       if (this.history.length > MAX_HISTORY_MESSAGES + 1) {
-        this.history = [this.history[0], ...this.history.slice(-(MAX_HISTORY_MESSAGES))];
+        const recent = this.history.slice(-MAX_HISTORY_MESSAGES);
+        if (recent[0]?.role === "assistant" || recent[0]?.role === "tool") recent.shift();
+        this.history = [this.history[0], ...recent];
       }
     } catch (err) {
       log.error("turn failed", { sessionId: this.sessionId, err: String(err) });
@@ -239,5 +252,6 @@ export class Session {
     if (this.disposed) return;
     this.disposed = true;
     this.sttHandle?.end();
+    this.transcriptWindow.reset();
   }
 }

@@ -14,7 +14,7 @@ export default function SetupPage() {
   const router = useRouter();
   const [userName, setUserName] = useState("");
   const [contacts, setContacts] = useState<Contact[]>([{ id: crypto.randomUUID(), name: "", phone: "", relationship: "" }]);
-  const [duressPhrase, setDuressPhrase] = useState("Mummy ko bol dena, blue notebook kitchen mein hai.");
+  const [duressPhrase, setDuressPhrase] = useState("Mummy ko bol dena blue notebook drawer mein rakhi hai");
   const [language, setLanguage] = useState<Lang>("auto");
   const [error, setError] = useState<string | null>(null);
   const [submitStage, setSubmitStage] = useState<"idle" | "creating" | "locating" | "opening">("idle");
@@ -65,7 +65,7 @@ export default function SetupPage() {
       if (initialPoint) {
         await fetch(`/api/session/${data.sessionId}/location`, {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: { "content-type": "application/json", "x-session-control": data.controlToken },
           body: JSON.stringify(initialPoint),
         }).catch(() => undefined);
         sessionStorage.setItem("pukaar.initialLocation", JSON.stringify(initialPoint));
@@ -76,6 +76,7 @@ export default function SetupPage() {
       sessionStorage.setItem("pukaar.duressPhrase", duressPhrase);
       sessionStorage.setItem("pukaar.language", language);
       sessionStorage.setItem("pukaar.trackUrl", data.trackUrl);
+      sessionStorage.setItem("pukaar.controlToken", data.controlToken);
       setSubmitStage("opening");
       router.push(`/call?sessionId=${data.sessionId}&trackToken=${data.trackToken}`);
     } catch (err) {

@@ -5,6 +5,7 @@ import { Canvas } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
 import { Orb } from "./Orb";
+import { ORB_CAMERA } from "./orb-scene-config";
 
 /** The R3F canvas. DPR capped at 1.75. A real MeshPhysicalMaterial glass
  *  shell (see Orb.tsx) needs an actual PMREM environment to refract and
@@ -18,17 +19,18 @@ import { Orb } from "./Orb";
  *  from a CSS blur behind the canvas instead (see OrbStage.tsx). */
 export function OrbScene({
   reducedMotion,
-  orbScale = 1,
   pointer,
+  onReady,
 }: {
   reducedMotion: boolean;
-  orbScale?: number;
   pointer?: RefObject<{ x: number; y: number }>;
+  onReady?: () => void;
 }) {
   return (
     <Canvas
       dpr={[1, 1.75]}
-      camera={{ position: [0, 0, 4], fov: 34 }}
+      camera={{ position: [0, 0, ORB_CAMERA.distance], fov: ORB_CAMERA.fov }}
+      onCreated={() => onReady?.()}
       gl={{
         antialias: true,
         alpha: true,
@@ -38,8 +40,8 @@ export function OrbScene({
       }}
       style={{ position: "absolute", inset: 0, background: "transparent" }}
     >
-      <ambientLight intensity={0.18} />
-      <Orb reducedMotion={reducedMotion} scale={orbScale} pointer={pointer} />
+      <ambientLight intensity={0.22} />
+      <Orb reducedMotion={reducedMotion} pointer={pointer} />
       {!reducedMotion && (
         <>
           {/* The reflection: a soft contact shadow beneath the orb, matching
@@ -48,7 +50,7 @@ export function OrbScene({
               plane (scale 6 was tried first) extended far enough into the
               perspective frustum that its own quad edge became visible as a
               dark wedge clipping the canvas corners. */}
-          <ContactShadows position={[0, -1.9, 0]} opacity={0.25} scale={3.2} blur={2.8} far={1.2} color="#ff6fcf" />
+          <ContactShadows position={[0, -1.14, 0]} opacity={0.2} scale={2.3} blur={2.8} far={0.7} color="#ff6fcf" />
           {/* background={false}: without it drei renders the HDRI itself as
               the scene background, filling the whole canvas as an opaque
               square. This should only ever contribute lighting/reflections

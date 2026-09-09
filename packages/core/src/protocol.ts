@@ -12,6 +12,7 @@ export type ClientFrame =
 export type ServerFrame =
   | { t: "ready"; sttMode: "ws" | "rest"; ttsMode: "ws" | "rest" }
   | { t: "partial"; text: string; utteranceIdx: number }
+  | { t: "vad"; state: "start" | "end"; utteranceIdx: number }
   | { t: "final"; text: string; utteranceIdx: number; turnId: string }
   | { t: "reply"; text: string; turnId: string }
   | { t: "audio"; b64: string; mime: string; sampleRateHz: number; turnId: string; seq: number }

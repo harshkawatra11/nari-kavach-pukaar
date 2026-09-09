@@ -8,3 +8,5 @@ export * from "./latency";
 export * from "./transcript";
 export * from "./message";
 export * from "./origin";
+export * from "./duress-profile";
+export * from "./transcript-window";

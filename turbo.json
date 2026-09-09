@@ -15,7 +15,8 @@
         "SARVAM_SPEAKER",
         "STT_MODE",
         "TTS_MODE",
-        "PUBLIC_TRACKING_ORIGIN"
+        "PUBLIC_TRACKING_ORIGIN",
+        "WA_BRIDGE_SECRET"
       ]
     },
     "dev": {

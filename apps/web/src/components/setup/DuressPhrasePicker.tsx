@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
-import { detectDuress } from "@pukaar/core";
+import { useMemo, useState } from "react";
+import { DEMO_PHRASE_PROFILE, detectDuress, matchPhrase, profileForStoredPhrase } from "@pukaar/core";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-const DEFAULT_PHRASE = "No, I already told mom. I will eat at home.";
+const DEFAULT_PHRASE = DEMO_PHRASE_PROFILE.displayPhrase;
 
 // A handful of things people say constantly, used only to warn if the chosen
 // phrase sits too close to ordinary small talk. Not a security boundary, a
@@ -27,6 +27,7 @@ const METER_COPY: Record<Level, string> = {
  *  replaces the old sentence-of-coloured-text feedback with something
  *  scannable at a glance. */
 export function DuressPhrasePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [preview, setPreview] = useState("");
   const wordCount = value.trim().split(/\s+/).filter(Boolean).length;
 
   const level: Level = useMemo(() => {
@@ -38,6 +39,7 @@ export function DuressPhrasePicker({ value, onChange }: { value: string; onChang
   }, [value, wordCount]);
 
   const filled = METER_FILL[level];
+  const previewMatch = preview.trim() ? matchPhrase(preview, profileForStoredPhrase(value)).matched : null;
 
   return (
     <div className="flex flex-col gap-2 px-4 py-3">
@@ -56,6 +58,14 @@ export function DuressPhrasePicker({ value, onChange }: { value: string; onChang
             ))}
           </div>
           <p className="text-[length:var(--text-xs)] text-ink-faint">{METER_COPY[level]}</p>
+          {value === DEFAULT_PHRASE && (
+            <div className="rounded-[var(--radius-sm)] border border-hairline bg-surface-1 p-3">
+              <p className="text-[length:var(--text-xs)] text-ink-soft">Words to remember: blue · notebook · drawer</p>
+              <p className="mt-1 text-[length:var(--text-xs)] text-ink-faint">You can say Mummy or Papa and add words before the phrase.</p>
+              <Input value={preview} onChange={(event) => setPreview(event.target.value)} placeholder="Try a variation locally" className="mt-3" />
+              {previewMatch !== null && <p className="mt-2 text-[length:var(--text-xs)] text-ink-faint">{previewMatch ? "This variation is armed." : "This variation is not armed."}</p>}
+            </div>
+          )}
         </>
       )}
       <button

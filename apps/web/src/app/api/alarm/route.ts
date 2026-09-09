@@ -4,6 +4,7 @@ import { getDb } from "@/lib/firestore/admin";
 import { recordAlert } from "@/lib/firestore/alerts";
 import { sendWhatsAppAlerts } from "@/lib/wa/bridge";
 import { env } from "@/lib/env";
+import { verifySessionControl } from "@/lib/firestore/sessions";
 
 const DEDUPE_WINDOW_MS = 15000;
 
@@ -29,6 +30,9 @@ export async function POST(req: Request) {
   // trigger path is same-origin and does not carry it. Both are legitimate.
   if (body.path === "server-tool" && relaySecretHeader !== env.RELAY_SHARED_SECRET) {
     return Response.json({ ok: false, error: "invalid relay secret" }, { status: 401 });
+  }
+  if (body.path === "client-local" && !(await verifySessionControl(body.sessionId, req.headers.get("x-session-control")))) {
+    return Response.json({ ok: false, error: "invalid session control" }, { status: 401 });
   }
 
   const db = getDb();
@@ -70,7 +74,9 @@ export async function POST(req: Request) {
   });
 
   const contacts = (session.contacts ?? []) as { name: string; phone: string }[];
-  const dispatch = await sendWhatsAppAlerts({ contacts, message, returnDelayMs: 2000 });
+  const alertId = `${body.sessionId}-${outcome.at}`;
+  await recordAlert({ sessionId: body.sessionId, path: body.path, reason: body.reason ?? "", at: outcome.at, contacts: [], foregroundRestored: false, stage: "queued" }, alertId);
+  const dispatch = await sendWhatsAppAlerts({ alertId, contacts, message, returnDelayMs: 2000 });
 
   await recordAlert({
     sessionId: body.sessionId,
@@ -79,14 +85,17 @@ export async function POST(req: Request) {
     at: outcome.at,
     contacts: dispatch.contacts,
     foregroundRestored: dispatch.foregroundRestored,
-  });
+    stage: dispatch.stage,
+  }, alertId);
 
   return Response.json({
     ok: true,
+    alertId,
     path: body.path,
     trackUrl,
     mapsLink: lastPoint ? mapsLink(lastPoint) : null,
     contacts: dispatch.contacts,
     foregroundRestored: dispatch.foregroundRestored,
+    stage: dispatch.stage,
   });
 }

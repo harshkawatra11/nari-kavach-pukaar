@@ -18,6 +18,7 @@ const OrbScene = dynamic(() => import("./OrbScene").then((m) => m.OrbScene), { s
 export function OrbStage({ phase, size = 320, showLabel = true }: { phase: string; size?: number; showLabel?: boolean }) {
   const reducedMotion = useReducedMotion();
   const [lowPower, setLowPower] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     // Not a lazy useState initializer: that runs during the server render
@@ -31,11 +32,6 @@ export function OrbStage({ phase, size = 320, showLabel = true }: { phase: strin
   }, []);
 
   const useStatic = reducedMotion || lowPower;
-  // The R3F canvas is expensive per-pixel (real-time transmission); scale the
-  // orb geometry itself down for compact placements rather than shrinking a
-  // full-size canvas with CSS, which would still pay the full render cost.
-  const orbScale = Math.min(1, size / 320);
-
   // Mouse-parallax: the glass catches light as the cursor moves. Driven as a
   // real rotation of the orb's own three.js group (see Orb.tsx), not a CSS
   // transform on the canvas element - tilting the DOM node would skew the
@@ -62,9 +58,9 @@ export function OrbStage({ phase, size = 320, showLabel = true }: { phase: strin
   return (
     <motion.div
       className="flex flex-col items-center gap-5"
-      initial={useStatic ? false : { opacity: 0, scale: 0.72, y: 18 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+      initial={false}
+      animate={{ opacity: ready ? 1 : 0, scale: ready ? 1 : 0.97, y: ready ? 0 : 6 }}
+      transition={{ duration: useStatic ? 0 : 0.5, ease: [0.22, 1, 0.36, 1] }}
     >
       <div
         style={{ width: size, height: size }}
@@ -90,7 +86,7 @@ export function OrbStage({ phase, size = 320, showLabel = true }: { phase: strin
           }}
         />
         <Suspense fallback={<div className="absolute inset-0 rounded-full bg-surface-2 opacity-60 blur-2xl" />}>
-          <OrbScene reducedMotion={useStatic} orbScale={orbScale} pointer={pointer} />
+          <OrbScene reducedMotion={useStatic} pointer={pointer} onReady={() => setReady(true)} />
         </Suspense>
         {/* Pulsing halo: a clean, regular pulse a viewer can register at a
             glance, distinct from the shader's own continuous, jittery

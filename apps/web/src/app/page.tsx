@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Info } from "lucide-react";
 import { AppBar } from "@/components/shell/AppBar";
@@ -9,9 +9,7 @@ import { OrbStage } from "@/components/orb/OrbStage";
 import { Composer } from "@/components/chat/Composer";
 import { Message } from "@/components/chat/Message";
 import { answerFor, FAQ } from "@/lib/faq";
-import { AnimatePresence, motion } from "framer-motion";
-import { OrbAssembly } from "@/components/orb/OrbAssembly";
-import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { motion } from "framer-motion";
 
 interface Turn {
   id: string;
@@ -26,25 +24,7 @@ const FALLBACK_TEXT = `I can answer these directly: ${FAQ.map((f) => f.question)
 
 export default function Home() {
   const [turns, setTurns] = useState<Turn[]>([]);
-  const [intro, setIntro] = useState<"checking" | "playing" | "ready">("checking");
-  const reducedMotion = useReducedMotion();
   const started = turns.length > 0;
-
-  useEffect(() => {
-    let seen = false;
-    try {
-      seen = sessionStorage.getItem("pukaar.intro.seen") === "1";
-    } catch {}
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- browser-only session preference is unavailable during SSR
-    setIntro(seen || reducedMotion ? "ready" : "playing");
-  }, [reducedMotion]);
-
-  const finishIntro = useCallback(() => {
-    try {
-      sessionStorage.setItem("pukaar.intro.seen", "1");
-    } catch {}
-    setIntro("ready");
-  }, []);
 
   // Local FAQ match first: instant, zero network, cannot be wrong. Only
   // questions outside those six ever reach the Groq fallback (/api/chat),
@@ -78,14 +58,11 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <AnimatePresence>{intro === "playing" && <OrbAssembly onComplete={finishIntro} onSkip={finishIntro} />}</AnimatePresence>
       <motion.div
         className="flex min-h-screen flex-col"
-        initial={false}
-        animate={{ opacity: intro === "ready" ? 1 : 0, y: intro === "ready" ? 0 : 8 }}
-        transition={{ duration: reducedMotion ? 0 : 0.65, ease: [0.22, 1, 0.36, 1] }}
-        inert={intro !== "ready" ? true : undefined}
-        aria-hidden={intro !== "ready"}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.42, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
       >
       <AppBar
         actions={
@@ -100,7 +77,7 @@ export default function Home() {
       <main className="mx-auto flex w-full max-w-[720px] flex-1 flex-col px-5">
         {!started ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-6 pb-6">
-            <OrbStage phase="idle" size={260} showLabel={false} />
+            <OrbStage phase="idle" size={300} showLabel={false} />
             <div className="text-center">
               <h1 className="text-[length:var(--text-2xl)]">The call she is already pretending to be on</h1>
               <p className="mt-2 text-[length:var(--text-base)] text-ink-soft">
